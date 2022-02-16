@@ -10,53 +10,62 @@
 
 using namespace std;
 
-bool training;                            // training represents whether the network is in training
-                                          // mode
-int A, B, F;                              // A is the number of activation nodes in the input
-                                          // activation layer, B is the number of nodes in the
-                                          // hidden layer, and F is the number of output nodes
-int numLayers;                            // the number of connectivity layers in the network
-int numTruthTableCases;                   // the number of test cases in the truth table
-vector<vector<vector<double> > > weights; // weights is the weights array, where the first index
-                                          // represents the connectivity layer of an edge, and the
-                                          // second and third indices represent the node from which
-                                          // the edge originates and the node to which the edge
-                                          // goes, respectively. The value contained in a given
-                                          // position in weights is the weight of the corresponding
-                                          // edge
-vector<vector<double> > truth;            // truth is the truth table, where the first index
-                                          // represents the test case index, and the second index
-                                          // represents the index of the node. Note that the values
-                                          // contained in all but the last entry of any given test
-                                          // case are the input activation layer values, and the
-                                          // last entry in any given test case is the expected
-                                          // output value
-vector<double> activations;               // the input activation layer values to use to run the
-                                          // network if the network is in running mode
-double lambda;                            // the learning factor value
-double errorThreshold;                    // the error threshold for terminating training
-int maxIterations;                        // the maximum number of iterations after which training
-                                          // will terminate
-bool useRandWeights;                      // useRandWeights represents whether the network
-                                          // should be using random weights or set weights for
-                                          // training
-double minRandVal, maxRandVal;            // the minimum and maximum random values to use for random
-                                          // weight values
-string previousFilename;                  // the name of the most recently opened user input file
+#define f first
+#define s second
+
+typedef pair<vector<double>, vector<double> > pvd;
+
+bool training;                                 // training represents whether the network is in
+                                               // training mode
+int A, B, F;                                   // A is the number of activation nodes in the input
+                                               // activation layer, B is the number of nodes in the
+                                               // hidden layer, and F is the number of output nodes
+int numLayers;                                 // the number of connectivity layers in the network
+int numTruthTableCases;                        // the number of test cases in the truth table
+vector<vector<vector<double> > > weights;      // weights stores the weights, where the first index
+                                               // represents the connectivity layer of an edge, and
+                                               // the second and third indices represent the node
+                                               // from which the edge originates and the node to
+                                               // which the edge goes, respectively
+vector<vector<vector<double> > > deltaWeights; // deltaWeights stores the change in weights between
+                                               // each training iteration, and the indices represent
+                                               // the same characteristics as those for the weights
+                                               // array
+vector<vector<double> > nodes;                 // nodes stores the values of the nodes in the
+                                               // network, where the first index represents the node
+                                               // layer of a node, and the second index represents
+                                               // the index of that node in that node layer
+vector<pvd> truth;                             // truth is the truth table, where the index
+                                               // represents the test caseNum index, the first entry
+                                               // in the pair of vectors of doubles contains the
+                                               // values for the input activation nodes, and the
+                                               // second entry in the pair contains the
+                                               // corresponding expected values for the output nodes
+double lambda;                                 // the learning factor value
+double errorThreshold;                         // the error threshold for terminating training
+int maxIterations;                             // the maximum number of iterations after which
+                                               // training will terminate
+bool useRandWeights;                           // useRandWeights represents whether the network
+                                               // should be using random weights or set weights for
+                                               // training
+double minRandVal, maxRandVal;                 // the minimum and maximum random values to use for
+                                               // generating random weight values
+ifstream inputFile;                            // the current input file stream to read from
 
 /**
-* Prompts the user with the input message string for the name of the file from which to read and
-* then sets that file as the standard input stream
+* Prompts the user with the input message string for the name of the file from which to read, closes
+* the old input file stream if open, and sets the global variable inputFile to a new input file
+* stream associated with the file the user inputted
 */
 void setupFileInputWithMessage(string message)
 {
    string filename;
    cout << message << "\n";
-// TODO: fix file IO i.e. copy stdin before closing it to then re-open it to get the filename
-// from stdin
    cin >> filename;
    cout << "\n"; // add a new line after the user's input to make the program output easier to read
-   freopen(filename.c_str(), "r", stdin);
+
+   if (inputFile.is_open()) inputFile.close();
+   inputFile.open(filename);
 } // void setupFileInput(string filename)
 
 /**
@@ -65,11 +74,11 @@ void setupFileInputWithMessage(string message)
 */
 void config()
 {
-   setupFileInputWithMessage("What is the name of your input parameter file?");
-   cin >> numLayers >> A >> B >> F >> numTruthTableCases;
-   cin >> training;
-   if (training) cin >> lambda >> errorThreshold >> maxIterations >> useRandWeights;
-   if (useRandWeights) cin >> minRandVal >> maxRandVal;
+   setupFileInputWithMessage("What is the full name of your input parameter file?");
+   inputFile >> numLayers >> A >> B >> F >> numTruthTableCases;
+   inputFile >> training;
+   if (training) inputFile >> lambda >> errorThreshold >> maxIterations >> useRandWeights;
+   if (useRandWeights) inputFile >> minRandVal >> maxRandVal;
 } // void config()
 
 /**
@@ -125,12 +134,11 @@ void allocateWeightsArray()
 void allocateTruthTableArray()
 {
    truth.resize(numTruthTableCases);
-   for (int i = 0; i < numTruthTableCases; i++)
+   for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
    {
-      truth.resize(A + 1); // needs A + 1 spaces because each test case needs A space for the input
-                           // activation values plus an additional space for the expected output
-                           // value
-   } // for (int i = 0; i < numTruthTableCases; i++)
+      truth[caseNum].f.resize(A);
+      truth[caseNum].s.resize(F);
+   } // for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
 } // void allocateTruthTableArray()
 
 /**
@@ -142,8 +150,14 @@ void allocateMemory()
 {
    allocateWeightsArray();
    allocateTruthTableArray();
-   // allocates memory for the activations array only if the network is running
-   if (!training) activations.resize(A);
+   nodes.resize(numLayers + 1); // the number of node layers is always one greater than the number
+                                // of connectivity layers
+   for (int nodeLayer = 0; nodeLayer < numLayers + 1; nodeLayer++)
+   {
+      if (nodeLayer == numLayers) nodes[nodeLayer].resize(F);
+      else if (!nodeLayer) nodes[nodeLayer].resize(A);
+      else nodes[nodeLayer].resize(B);
+   } // for (int nodeLayer = 0; nodeLayer < numLayers + 1; nodeLayer++)
 } // void allocateMemory()
 
 /**
@@ -151,15 +165,12 @@ void allocateMemory()
 */
 void loadTruthTableValues()
 {
-   setupFileInputWithMessage("What is the name of the file contining the truth table?");
-   for (int i = 0; i < numTruthTableCases; i++)
+   setupFileInputWithMessage("What is the full name of the file containing the truth table?");
+   for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
    {
-      for (int k = 0; k < A; k++)
-      {
-         cin >> truth[i][k];
-      } // for (int k = 0; k < A; k++)
-      cin >> truth[i][A]; // take in the expected output value for the current truth table test case
-   } // for (int i = 0; i < numTruthTableCases; i++)
+      for (int k = 0; k < A; k++) inputFile >> truth[caseNum].f[k];
+      for (int i = 0; i < F; i++) inputFile >> truth[caseNum].s[i];
+   } // for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
 } // void loadTruthTableValues()
 
 /**
@@ -167,17 +178,11 @@ void loadTruthTableValues()
 */
 void loadWeightValues()
 {
-   setupFileInputWithMessage("What is the name of the file containing the weights?");
+   setupFileInputWithMessage("What is the full name of the file containing the weights?");
    for (int n = 0; n < numLayers; n++)
-   {
       for (int i = 0; i < weights[n].size(); i++)
-      {
          for (int j = 0; j < weights[n][i].size(); j++)
-         {
-            cin >> weights[n][i][j];
-         } // for (int j = 0; j < weights[n][i].size(); j++)
-      } // for (int i = 0; i < weights[n].size(); i++)
-   } // for (int n = 0; n < numLayers; n++)
+            inputFile >> weights[n][i][j];
 } // void loadWeightValues()
 
 /**
@@ -197,15 +202,9 @@ double getRandomNumberBetween(double minValue, double maxValue)
 void generateRandomWeightValues()
 {
    for (int n = 0; n < numLayers; n++)
-   {
       for (int i = 0; i < weights[n].size(); i++)
-      {
          for (int j = 0; j < weights[n][i].size(); j++)
-         {
             weights[n][i][j] = getRandomNumberBetween(minRandVal, maxRandVal);
-         } // for (int j = 0; j < weights[n][i].size(); j++)
-      } // for (int i = 0; i < weights[n].size(); i++)
-   } // for (int n = 0; n < numLayers; n++)
 } // void generateRandomWeightValues()
 
 /**
@@ -213,9 +212,9 @@ void generateRandomWeightValues()
 */
 void loadActivationValues()
 {
-   setupFileInputWithMessage("What is the name of the file containing the input activation "
+   setupFileInputWithMessage("What is the full name of the file containing the input activation "
                              "values?");
-   for (int k = 0; k < A; k++) cin >> activations[k];
+   for (int k = 0; k < A; k++) inputFile >> nodes[0][k];
 } // void loadActivationValues()
 
 /**
@@ -231,20 +230,81 @@ void loadValues()
 } // void loadValues()
 
 /**
-* Trains the network
+* Returns the activation function evaluated at the input value. The current activation function is
+* the sigmoid function 1 / (1 + e^(-x))
 */
-void train()
+double activationFunction(double value)
 {
+   return 1 / (1 + exp(-value));
+} // double activationFunction(double value)
 
+/**
+* Returns the dervivative of the activation function defined above
+*/
+double activationFunctionDerivative(double value)
+{
+   return activationFunction(value) * (1 - activationFunction(value));
 }
+
+/**
+* Calculates and returns the value of the node in the given node layer at the given index, where
+* both the node layer and index are zero-indexed
+*
+* Precondition: nodeLayer > 0
+*/
+double calculateNode(int nodeLayer, int index)
+{
+   double ret;
+   for (int prev = 0; prev < weights[nodeLayer-1].size(); prev++)
+      ret += nodes[nodeLayer-1][prev] * weights[nodeLayer-1][prev][index];
+   return activationFunction(ret);
+} // void calculateNode(int nodeLayer, int index)
 
 /**
 * Runs the network
 */
 void run()
 {
+   // nodeLayer begins at 1 because the input activation layer was given by the user, and nodeLayer
+   // goes to numLayers + 1 because there exists one more node layer than the number of connectivity
+   // layers
+   for (int nodeLayer = 1; nodeLayer < numLayers + 1; nodeLayer++)
+   {
+      if (nodeLayer == numLayers)
+         for (int i = 0; i < F; i++) nodes[nodeLayer][i] = calculateNode(nodeLayer, i);
+      else
+         for (int j = 0; j < B; j++) nodes[nodeLayer][j] = calculateNode(nodeLayer, j);
+   } // for (int nodeLayer = 1; nodeLayer < numLayers + 1; nodeLayer++)
+} // void run()
 
-}
+/**
+* Trains the network, stopping when either the maximum number of iterations has been reached or
+* the maximum error across all test cases is lower than the error threshold
+*/
+void train()
+{
+   int numIterations = 0;
+   bool maxIterationsReached = false;
+   bool errorThresholdReached = false;
+
+   while (!maxIterationsReached && !errorThresholdReached)
+   {
+      double maxError = -DBL_MAX; // initialized to the lowest possible double value
+      for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
+      {
+         for (int k = 0; k < A; k++) nodes[0][k] = truth[testCaseNum].f[k];
+         run();
+
+      } // for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
+      numIterations++;
+      if (numIterations >= maxIterations) maxIterationsReached = true;
+      if (maxError < errorThreshold) errorThresholdReached = true;
+   } // while (!maxIterationsReached && !errorThresholdReached)
+
+   cout << "Training was terminiated because of the following reason(s):\n";
+   if (maxIterationsReached) cout << "The maximum number of iterations was reached\n";
+   if (errorThresholdReached) cout << "The error threshold was reached\n";
+} // void train()
 
 /**
 * The main method which either trains or executes the network, depending upon the configuration
@@ -256,8 +316,12 @@ int main()
    printOutConfigVals();
    allocateMemory();
    loadValues();
-   if (training) train();
-   else run();
+   if (!training) run();
+   else train();
+   // TODO: printOutOutput()
+
+
+
    // TODO: make everything their own functions
    // TODO: write down the expected structure of the input parameter file in the README file
    // i.e. numLayers, A, B, F, numTruthTableCases, training, lambda, errorThreshold, maxIterations,
@@ -273,6 +337,13 @@ int main()
    // TODO: I'm iterating through i.e. k for activation layer, j for hidden layer, i for output
 
    // TODO: make the weights file a separate file from the config file
+
+   // TODO: can we #include <bits/stdc++.h>? or should we only include specific modules?
+
+   // TODO: can we use typedef and/or #define (check top of file for specifics)?
+
+   // TODO: can we have nested for loops without braces that have one line of code -- see
+   // generateRandomWeightValues() and loadWeightValues() and calculateNode(params)
 
 } // int main()
 
