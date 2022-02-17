@@ -7,6 +7,7 @@
 */
 
 #include <bits/stdc++.h>
+#include <random>
 
 using namespace std;
 
@@ -102,27 +103,33 @@ void printOutConfigVals()
 } // void printOutConfigVals()
 
 /**
-* Allocates the necessary memory for the weights array
+* Allocates the necessary memory for the weights array and the deltaWeights array, only allocating
+* memory for deltaWeights if the network is in training mode
 */
-void allocateWeightsArray()
+void allocateWeightsArrays()
 {
    weights.resize(numLayers);
+   if (training) deltaWeights.resize(numLayers);
    for (int n = 0; n < numLayers; n++)
    {
-      if (n)
+      if (n == numLayers - 1)
       {
-         weights[n].resize(B); // OR weights[n].resize(weights[n-1][0].size());
+         weights[n].resize(B);
+         if (training) deltaWeights[n].resize(B);
          for (int j = 0; j < B; j++)
          {
             weights[n][j].resize(F);
+            if (training) deltaWeights[n][j].resize(F);
          } // for (int j = 0; j < B; j++)
-      } // if (n)
+      } // if (n == numLayers - 1)
       else
       {
          weights[n].resize(A);
+         if (training) deltaWeights[n].resize(A);
          for (int k = 0; k < A; k++)
          {
             weights[n][k].resize(B);
+            if (training) deltaWeights[n][k].resize(B);
          } // for (int k = 0; k < A; k++)
       } // else
    } // for (int n = 0; n < numLayers; n++)
@@ -148,7 +155,7 @@ void allocateTruthTableArray()
 */
 void allocateMemory()
 {
-   allocateWeightsArray();
+   allocateWeightsArrays();
    allocateTruthTableArray();
    nodes.resize(numLayers + 1); // the number of node layers is always one greater than the number
                                 // of connectivity layers
@@ -180,9 +187,9 @@ void loadWeightValues()
 {
    setupFileInputWithMessage("What is the full name of the file containing the weights?");
    for (int n = 0; n < numLayers; n++)
-      for (int i = 0; i < weights[n].size(); i++)
-         for (int j = 0; j < weights[n][i].size(); j++)
-            inputFile >> weights[n][i][j];
+      for (int left = 0; left < weights[n].size(); left++)
+         for (int right = 0; right < weights[n][left].size(); right++)
+            inputFile >> weights[n][left][right];
 } // void loadWeightValues()
 
 /**
@@ -192,9 +199,11 @@ void loadWeightValues()
 */
 double getRandomNumberBetween(double minValue, double maxValue)
 {
-   double randBetweenZeroAndOne = ((double) rand()) / ((double) RAND_MAX);
-   return randBetweenZeroAndOne * (maxValue - minValue) + minValue;
-}
+   random_device rd;
+   mt19937 generator(rd());
+   uniform_real_distribution<> distr(minValue, maxValue);
+   return distr(generator);
+} // double getRandomNumberBetween(double minValue, double maxValue)
 
 /**
 * Generates random weight values based upon the configuration parameters
@@ -202,9 +211,9 @@ double getRandomNumberBetween(double minValue, double maxValue)
 void generateRandomWeightValues()
 {
    for (int n = 0; n < numLayers; n++)
-      for (int i = 0; i < weights[n].size(); i++)
-         for (int j = 0; j < weights[n][i].size(); j++)
-            weights[n][i][j] = getRandomNumberBetween(minRandVal, maxRandVal);
+      for (int left = 0; left < weights[n].size(); left++)
+         for (int right = 0; right < weights[n][left].size(); right++)
+            weights[n][left][right] = getRandomNumberBetween(minRandVal, maxRandVal);
 } // void generateRandomWeightValues()
 
 /**
@@ -235,15 +244,23 @@ void loadValues()
 */
 double activationFunction(double value)
 {
-   return 1 / (1 + exp(-value));
+   return ((double) 1) / (((double) 1) + exp(-value));
 } // double activationFunction(double value)
 
 /**
-* Returns the dervivative of the activation function defined above
+* Returns the dervivative, evaluated at the given value, of the activation function defined above
 */
 double activationFunctionDerivative(double value)
 {
-   return activationFunction(value) * (1 - activationFunction(value));
+   return activationFunction(value) * (((double) 1) - activationFunction(value));
+}
+
+/**
+* Returns the inverse, evaluated at the given value, of the activation function defined above
+*/
+double inverseActivationFunction(double value)
+{
+   return -log(((double) 1) / value - ((double) 1));
 }
 
 /**
@@ -254,21 +271,21 @@ double activationFunctionDerivative(double value)
 */
 double calculateNode(int nodeLayer, int index)
 {
-   double ret;
-   for (int prev = 0; prev < weights[nodeLayer-1].size(); prev++)
-      ret += nodes[nodeLayer-1][prev] * weights[nodeLayer-1][prev][index];
+   double ret = 0;
+   for (int prev = 0; prev < weights[nodeLayer - 1].size(); prev++)
+      ret += nodes[nodeLayer - 1][prev] * weights[nodeLayer - 1][prev][index];
    return activationFunction(ret);
 } // void calculateNode(int nodeLayer, int index)
 
 /**
 * Runs the network
+*
+* Precondition: the input activation layer has already been set
 */
 void run()
 {
-   // nodeLayer begins at 1 because the input activation layer was given by the user, and nodeLayer
-   // goes to numLayers + 1 because there exists one more node layer than the number of connectivity
-   // layers
-   for (int nodeLayer = 1; nodeLayer < numLayers + 1; nodeLayer++)
+   // nodeLayer begins at 1 because the input activation layer has already been set
+   for (int nodeLayer = 1; nodeLayer <= numLayers; nodeLayer++)
    {
       if (nodeLayer == numLayers)
          for (int i = 0; i < F; i++) nodes[nodeLayer][i] = calculateNode(nodeLayer, i);
@@ -295,13 +312,59 @@ void train()
          for (int k = 0; k < A; k++) nodes[0][k] = truth[testCaseNum].f[k];
          run();
 
+         double omega_0 = 0;
+         double totalError = 0;
+         for (int i = 0; i < F; i++)
+         {
+            double omega = truth[testCaseNum].s[i] - nodes[numLayers][i];
+
+            if (!i) omega_0 = omega;
+            totalError += omega * omega;
+         } // for (int i = 0; i < F; i++)
+
+         totalError *= ((double) 1) / ((double) 2);
+         if (totalError > maxError) maxError = totalError;
+
+         // calculate and populate the delta weights array
+         double psi_0 = 0;
+         for (int n = numLayers - 1; n >= 0; n--)
+         {
+            if (n == numLayers - 1)
+            {
+               for (int i = 0; i < F; i++)
+               {
+                  psi_0 = omega_0 *
+                     activationFunctionDerivative(inverseActivationFunction(nodes[n + 1][i]));
+                  for (int j = 0; j < B; j++) deltaWeights[n][j][i] = lambda * nodes[n][j] * psi_0;
+               } // for (int i = 0; i < F; i++)
+            } // if (n == numLayers - 1)
+            else
+            {
+               for (int j = 0; j < B; j++)
+               {
+                  double capitalOmega_j = psi_0 * weights[n][j][0];
+                  double capitalPsi_j = capitalOmega_j *
+                     activationFunctionDerivative(inverseActivationFunction(nodes[n + 1][j]));
+                  for (int k = 0; k < A; k++)
+                     deltaWeights[n][k][j] = lambda * nodes[n][k] * capitalPsi_j;
+               } // for (int j = 0; j < B; j++)
+            } // else
+         } // for (int n = 0; n < numLayers; n++)
+
+         // update the weights array
+         for (int n = 0; n < numLayers; n++)
+            for (int left = 0; left < weights[n].size(); left++)
+               for (int right = 0; right < weights[n][left].size(); right++)
+                  weights[n][left][right] += deltaWeights[n][left][right];
       } // for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
+
+      if (numIterations % 10000 == 0) cout << maxError << "\n"; // testing print statement
       numIterations++;
       if (numIterations >= maxIterations) maxIterationsReached = true;
       if (maxError < errorThreshold) errorThresholdReached = true;
    } // while (!maxIterationsReached && !errorThresholdReached)
 
-   cout << "Training was terminiated because of the following reason(s):\n";
+   cout << "Training was terminated because of the following reason(s):\n";
    if (maxIterationsReached) cout << "The maximum number of iterations was reached\n";
    if (errorThresholdReached) cout << "The error threshold was reached\n";
 } // void train()
@@ -318,6 +381,14 @@ int main()
    loadValues();
    if (!training) run();
    else train();
+
+   for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
+   {
+      for (int k = 0; k < A; k++) nodes[0][k] = truth[caseNum].f[k];
+      run();
+      cout << "testCaseNum: " << caseNum << ", output: " << nodes[numLayers][0] << "\n";
+   } // for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
+
    // TODO: printOutOutput()
 
 
@@ -342,8 +413,14 @@ int main()
 
    // TODO: can we use typedef and/or #define (check top of file for specifics)?
 
-   // TODO: can we have nested for loops without braces that have one line of code -- see
+   // TODO: can we have nested for loops without braces that have one line of code? See
    // generateRandomWeightValues() and loadWeightValues() and calculateNode(params)
+
+   // TODO: is the 0 in the line "double capitalOmega_j = psi_0 * weights[n][j][0];" a magic number?
+   // See train() at or around line 332
+
+   // TODO: is the spillover indentation on line 334 (or around there) correct? It's the line where
+   // I define capitalPsi_j
 
 } // int main()
 
