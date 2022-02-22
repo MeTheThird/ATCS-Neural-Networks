@@ -14,6 +14,7 @@ using namespace std;
 #define f first
 #define s second
 
+typedef pair<double, double> pdd;
 typedef pair<vector<double>, vector<double> > pvd;
 
 bool training;                                 // training represents whether the network is in
@@ -36,6 +37,16 @@ vector<vector<double> > nodes;                 // nodes stores the values of the
                                                // network, where the first index represents the node
                                                // layer of a node, and the second index represents
                                                // the index of that node in that node layer
+vector<vector<double> > sums;                  // sums stores the values of the nodes in the network
+                                               // before the activation function is applied i.e. for
+                                               // each node, sums stores the sum over the values of
+                                               // the nodes in the previous node layer multiplied by
+                                               // their associated weight value. Note that the first
+                                               // node layer of sums is just the input activation
+                                               // layer, and the later node layers of sums follows
+                                               // the aforementioned definition. Also note that the
+                                               // indices represent the same characteristics as
+                                               // those in the nodes array above.
 vector<pvd> truth;                             // truth is the truth table, where the index
                                                // represents the test caseNum index, the first entry
                                                // in the pair of vectors of doubles contains the
@@ -108,31 +119,26 @@ void printOutConfigVals()
 */
 void allocateWeightsArrays()
 {
-   weights.resize(numLayers);
-   if (training) deltaWeights.resize(numLayers);
-   for (int n = 0; n < numLayers; n++)
+   weights.resize(2);
+   if (training) deltaWeights.resize(2);
+
+   // allocates memory for the first connectivity layer
+   weights[0].resize(B);
+   if (training) deltaWeights[0].resize(B);
+   for (int j = 0; j < B; j++)
    {
-      if (n == numLayers - 1)
-      {
-         weights[n].resize(B);
-         if (training) deltaWeights[n].resize(B);
-         for (int j = 0; j < B; j++)
-         {
-            weights[n][j].resize(F);
-            if (training) deltaWeights[n][j].resize(F);
-         } // for (int j = 0; j < B; j++)
-      } // if (n == numLayers - 1)
-      else
-      {
-         weights[n].resize(A);
-         if (training) deltaWeights[n].resize(A);
-         for (int k = 0; k < A; k++)
-         {
-            weights[n][k].resize(B);
-            if (training) deltaWeights[n][k].resize(B);
-         } // for (int k = 0; k < A; k++)
-      } // else
-   } // for (int n = 0; n < numLayers; n++)
+      weights[0][j].resize(F);
+      if (training) deltaWeights[0][j].resize(F);
+   } // for (int j = 0; j < B; j++)
+
+   // allocates memory for the second connectivity layer
+   weights[1].resize(A);
+   if (training) deltaWeights[1].resize(A);
+   for (int k = 0; k < A; k++)
+   {
+      weights[1][k].resize(B);
+      if (training) deltaWeights[1][k].resize(B);
+   } // for (int k = 0; k < A; k++)
 } // void allocateWeightsArray()
 
 /**
@@ -157,14 +163,15 @@ void allocateMemory()
 {
    allocateWeightsArrays();
    allocateTruthTableArray();
-   nodes.resize(numLayers + 1); // the number of node layers is always one greater than the number
-                                // of connectivity layers
-   for (int nodeLayer = 0; nodeLayer < numLayers + 1; nodeLayer++)
-   {
-      if (nodeLayer == numLayers) nodes[nodeLayer].resize(F);
-      else if (!nodeLayer) nodes[nodeLayer].resize(A);
-      else nodes[nodeLayer].resize(B);
-   } // for (int nodeLayer = 0; nodeLayer < numLayers + 1; nodeLayer++)
+   nodes.resize(3);    // the number of node layers is always one greater than the number of
+                       // connectivity layers
+   sums.resize(3);
+   nodes[0].resize(A); // the first node layer is the activation layer with A nodes
+   sums[0].resize(A);
+   nodes[1].resize(B); // the second node layer is the hidden layer with B nodes
+   sums[1].resize(B);
+   nodes[2].resize(F); // the third and final node layer is the output layer with F nodes
+   sums[2].resize(F);
 } // void allocateMemory()
 
 /**
@@ -176,7 +183,7 @@ void loadTruthTableValues()
    for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
    {
       for (int k = 0; k < A; k++) inputFile >> truth[caseNum].f[k];
-      for (int i = 0; i < F; i++) inputFile >> truth[caseNum].s[i];
+      inputFile >> truth[caseNum].s[0];
    } // for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
 } // void loadTruthTableValues()
 
@@ -186,10 +193,15 @@ void loadTruthTableValues()
 void loadWeightValues()
 {
    setupFileInputWithMessage("What is the full name of the file containing the weights?");
-   for (int n = 0; n < numLayers; n++)
-      for (int left = 0; left < weights[n].size(); left++)
-         for (int right = 0; right < weights[n][left].size(); right++)
-            inputFile >> weights[n][left][right];
+
+   // load the first connectivity layer of the weights array
+   for (int k = 0; k < A; k++)
+      for (int j = 0; j < B; j++)
+         inputFile >> weights[0][k][j];
+
+   // load the second connectivity layer of the weights array
+   for (int j = 0; j < B; j++)
+      inputFile >> weights[1][j][0];
 } // void loadWeightValues()
 
 /**
@@ -210,10 +222,14 @@ double getRandomNumberBetween(double minValue, double maxValue)
 */
 void generateRandomWeightValues()
 {
-   for (int n = 0; n < numLayers; n++)
-      for (int left = 0; left < weights[n].size(); left++)
-         for (int right = 0; right < weights[n][left].size(); right++)
-            weights[n][left][right] = getRandomNumberBetween(minRandVal, maxRandVal);
+   // randomly generate the first connectivity layer of the weights array
+   for (int k = 0; k < A; k++)
+      for (int j = 0; j < B; j++)
+         weights[0][k][j] = getRandomNumberBetween(minRandVal, maxRandVal);
+
+   // randomly generate the second connectivity layer of the weights array
+   for (int j = 0; j < B; j++)
+      weights[1][j][0] = getRandomNumberBetween(minRandVal, maxRandVal);
 } // void generateRandomWeightValues()
 
 /**
@@ -249,18 +265,12 @@ double activationFunction(double value)
 
 /**
 * Returns the dervivative, evaluated at the given value, of the activation function defined above
+*
+* Precondition: the activation function is differentiable
 */
 double activationFunctionDerivative(double value)
 {
    return activationFunction(value) * (((double) 1) - activationFunction(value));
-}
-
-/**
-* Returns the inverse, evaluated at the given value, of the activation function defined above
-*/
-double inverseActivationFunction(double value)
-{
-   return -log(((double) 1) / value - ((double) 1));
 }
 
 /**
@@ -269,12 +279,21 @@ double inverseActivationFunction(double value)
 *
 * Precondition: nodeLayer > 0
 */
-double calculateNode(int nodeLayer, int index)
+pdd calculateNode(int nodeLayer, int index)
 {
    double ret = 0;
-   for (int prev = 0; prev < weights[nodeLayer - 1].size(); prev++)
-      ret += nodes[nodeLayer - 1][prev] * weights[nodeLayer - 1][prev][index];
-   return activationFunction(ret);
+
+   if (nodeLayer == 1) // if the current node is in the hidden layer
+   {
+      for (int prev = 0; prev < A; prev++)
+         ret += nodes[0][prev] * weights[0][prev][index];
+   } // if (nodeLayer == 1)
+   else // if the current node is in the output layer
+   {
+      for (int prev = 0; prev < B; prev++)
+         ret += nodes[1][prev] * weights[1][prev][index];
+   } // else
+   return make_pair(activationFunction(ret), ret);
 } // void calculateNode(int nodeLayer, int index)
 
 /**
@@ -284,14 +303,18 @@ double calculateNode(int nodeLayer, int index)
 */
 void run()
 {
-   // nodeLayer begins at 1 because the input activation layer has already been set
-   for (int nodeLayer = 1; nodeLayer <= numLayers; nodeLayer++)
+   // calculates and populates the hidden layer
+   for (int j = 0; j < B; j++)
    {
-      if (nodeLayer == numLayers)
-         for (int i = 0; i < F; i++) nodes[nodeLayer][i] = calculateNode(nodeLayer, i);
-      else
-         for (int j = 0; j < B; j++) nodes[nodeLayer][j] = calculateNode(nodeLayer, j);
-   } // for (int nodeLayer = 1; nodeLayer < numLayers + 1; nodeLayer++)
+      pdd hiddenNodeVals = calculateNode(1, j);
+      nodes[1][j] = hiddenNodeVals.f;
+      sums[1][j] = hiddenNodeVals.s;
+   } // for (int j = 0; j < B; j++)
+
+   // calculates and populates the output layer
+   pdd outputNodeVals = calculateNode(2, 0);
+   nodes[2][0] = outputNodeVals.f;
+   sums[2][0] = outputNodeVals.s;
 } // void run()
 
 /**
@@ -309,53 +332,49 @@ void train()
       double maxError = -DBL_MAX; // initialized to the lowest possible double value
       for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
       {
-         for (int k = 0; k < A; k++) nodes[0][k] = truth[testCaseNum].f[k];
+         for (int k = 0; k < A; k++)
+         {
+            nodes[0][k] = truth[testCaseNum].f[k];
+            sums[0][k] = truth[testCaseNum].f[k];
+         } // for (int k = 0; k < A; k++)
          run();
 
-         double omega_0 = 0;
+         double omega_0 = truth[testCaseNum].s[0] - nodes[2][0];
          double totalError = 0;
-         for (int i = 0; i < F; i++)
-         {
-            double omega = truth[testCaseNum].s[i] - nodes[numLayers][i];
 
-            if (!i) omega_0 = omega;
-            totalError += omega * omega;
-         } // for (int i = 0; i < F; i++)
-
+         totalError += omega_0 * omega_0;
          totalError *= ((double) 1) / ((double) 2);
          if (totalError > maxError) maxError = totalError;
 
-         // calculate and populate the delta weights array
+         // calculate and populate the delta weights array for the second connectivity layer
          double psi_0 = 0;
-         for (int n = numLayers - 1; n >= 0; n--)
+         psi_0 = omega_0 * activationFunctionDerivative(sums[2][0]);
+         for (int j = 0; j < B; j++)
          {
-            if (n == numLayers - 1)
-            {
-               for (int i = 0; i < F; i++)
-               {
-                  psi_0 = omega_0 *
-                     activationFunctionDerivative(inverseActivationFunction(nodes[n + 1][i]));
-                  for (int j = 0; j < B; j++) deltaWeights[n][j][i] = lambda * nodes[n][j] * psi_0;
-               } // for (int i = 0; i < F; i++)
-            } // if (n == numLayers - 1)
-            else
-            {
-               for (int j = 0; j < B; j++)
-               {
-                  double capitalOmega_j = psi_0 * weights[n][j][0];
-                  double capitalPsi_j = capitalOmega_j *
-                     activationFunctionDerivative(inverseActivationFunction(nodes[n + 1][j]));
-                  for (int k = 0; k < A; k++)
-                     deltaWeights[n][k][j] = lambda * nodes[n][k] * capitalPsi_j;
-               } // for (int j = 0; j < B; j++)
-            } // else
-         } // for (int n = 0; n < numLayers; n++)
+            double partialDeriv = -nodes[1][j] * psi_0;
+            deltaWeights[1][j][0] = -lambda * partialDeriv;
+         } // for (int j = 0; j < B; j++)
 
-         // update the weights array
-         for (int n = 0; n < numLayers; n++)
-            for (int left = 0; left < weights[n].size(); left++)
-               for (int right = 0; right < weights[n][left].size(); right++)
-                  weights[n][left][right] += deltaWeights[n][left][right];
+         // calculate and populate the delta weights array for the first connectivity layer
+         for (int j = 0; j < B; j++)
+         {
+            double capitalOmega_j = psi_0 * weights[1][j][0];
+            double capitalPsi_j = capitalOmega_j * activationFunctionDerivative(sums[1][j]);
+            for (int k = 0; k < A; k++)
+            {
+               double partialDeriv = -nodes[0][k] * capitalPsi_j;
+               deltaWeights[0][k][j] = -lambda * partialDeriv;
+            } // for (int k = 0; k < A; k++)
+         } // for (int j = 0; j < B; j++)
+
+         // update the weights array for the first connectivity layer
+         for (int k = 0; k < A; k++)
+            for (int j = 0; j < B; j++)
+               weights[0][k][j] += deltaWeights[0][k][j];
+
+         // update the weights array for the second connectivity layer
+         for (int j = 0; j < B; j++)
+            weights[1][j][0] += deltaWeights[1][j][0];
       } // for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
 
       if (numIterations % 10000 == 0) cout << maxError << "\n"; // testing print statement
@@ -386,7 +405,7 @@ int main()
    {
       for (int k = 0; k < A; k++) nodes[0][k] = truth[caseNum].f[k];
       run();
-      cout << "testCaseNum: " << caseNum << ", output: " << nodes[numLayers][0] << "\n";
+      cout << "testCaseNum: " << caseNum << ", output: " << nodes[2][0] << "\n";
    } // for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
 
    // TODO: printOutOutput()
