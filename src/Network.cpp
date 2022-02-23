@@ -118,6 +118,8 @@ void printOutConfigVals()
 /**
 * Allocates the necessary memory for the weights array and the deltaWeights array, only allocating
 * memory for deltaWeights if the network is in training mode
+*
+* Precondition: the configuration parameters have been set
 */
 void allocateWeightsArrays()
 {
@@ -145,6 +147,8 @@ void allocateWeightsArrays()
 
 /**
 * Allocates the necessary memory for the truth table array
+*
+* Precondition: the configuration parameters have been set
 */
 void allocateTruthTableArray()
 {
@@ -159,15 +163,17 @@ void allocateTruthTableArray()
 /**
 * Allocates the necessary memory for the global variables based upon the configuration parameters
 *
-* Precondition: the configuration parameters must have been already set
+* Precondition: the configuration parameters have been set
 */
 void allocateMemory()
 {
    allocateWeightsArrays();
    allocateTruthTableArray();
-   nodes.resize(3);    // the number of node layers is always one greater than the number of
-                       // connectivity layers
+   // the number of node layers is always one greater than the number of connectivity layers, so
+   // the number of layers for this A-B-1 network must be 3
+   nodes.resize(3);
    sums.resize(3);
+
    nodes[0].resize(A); // the first node layer is the activation layer with A nodes
    sums[0].resize(A);
    nodes[1].resize(B); // the second node layer is the hidden layer with B nodes
@@ -178,6 +184,8 @@ void allocateMemory()
 
 /**
 * Loads in the truth table values from a file the user has created
+*
+* Precondition: the memory for the truth table values has been carved out
 */
 void loadTruthTableValues()
 {
@@ -191,6 +199,8 @@ void loadTruthTableValues()
 
 /**
 * Loads in the weight values from a file the user has created
+*
+* Precondition: the memory for the network's weight values has been carved out
 */
 void loadWeightValues()
 {
@@ -221,6 +231,8 @@ double getRandomNumberBetween(double minValue, double maxValue)
 
 /**
 * Generates random weight values based upon the configuration parameters
+*
+* Precondition: the memory for the network's weight values has been carved out
 */
 void generateRandomWeightValues()
 {
@@ -236,6 +248,8 @@ void generateRandomWeightValues()
 
 /**
 * Loads in the activation values to use for running the network from a file the user has created
+*
+* Precondition: the memory for the input activation layer has been carved out
 */
 void loadActivationValues()
 {
@@ -247,6 +261,8 @@ void loadActivationValues()
 /**
 * Loads the appropriate values into the correponding global variable arrays depending upon the
 * network's configuration parameters
+*
+* Precondition: the memory for each necessary array has been carved out
 */
 void loadValues()
 {
@@ -262,7 +278,7 @@ void loadValues()
 */
 double activationFunction(double value)
 {
-   return ((double) 1) / (((double) 1) + exp(-value));
+   return 1.0 / (1.0 + exp(-value));
 } // double activationFunction(double value)
 
 /**
@@ -272,13 +288,13 @@ double activationFunction(double value)
 */
 double activationFunctionDerivative(double value)
 {
-   return activationFunction(value) * (((double) 1) - activationFunction(value));
+   return activationFunction(value) * (1.0 - activationFunction(value));
 }
 
 /**
 * Runs the network
 *
-* Precondition: the input activation layer has already been set
+* Precondition: the input activation layer values and the network's weight values have been set
 */
 void run()
 {
@@ -286,14 +302,14 @@ void run()
    // calculates and populates the hidden layer
    for (int j = 0; j < B; j++)
    {
-      nodeVal = 0;
+      nodeVal = 0.0;
       for (int k = 0; k < A; k++) nodeVal += nodes[0][k] * weights[0][k][j];
       nodes[1][j] = activationFunction(nodeVal);
       sums[1][j] = nodeVal;
    } // for (int j = 0; j < B; j++)
 
    // calculates and populates the output layer
-   nodeVal = 0;
+   nodeVal = 0.0;
    for (int j = 0; j < B; j++) nodeVal += nodes[1][j] * weights[1][j][0];
    nodes[2][0] = activationFunction(nodeVal);
    sums[2][0] = nodeVal;
@@ -302,6 +318,8 @@ void run()
 /**
 * Trains the network, stopping when either the maximum number of iterations has been reached or
 * the maximum error across all test cases is lower than the error threshold
+*
+* Precondition: the truth table values and the network's weight values have been set
 */
 void train()
 {
@@ -322,14 +340,14 @@ void train()
          run();
 
          double omega_0 = truth[testCaseNum].s[0] - nodes[2][0];
-         double totalError = 0;
+         double totalError = 0.0;
 
          totalError += omega_0 * omega_0;
-         totalError *= ((double) 1) / ((double) 2);
+         totalError *= 1.0 / 2.0;
          if (totalError > maxError) maxError = totalError;
 
          // calculate and populate the delta weights array for the second connectivity layer
-         double psi_0 = 0;
+         double psi_0 = 0.0;
          psi_0 = omega_0 * activationFunctionDerivative(sums[2][0]);
          for (int j = 0; j < B; j++)
          {
@@ -371,6 +389,16 @@ void train()
 } // void train()
 
 /**
+* Reports on the network's behavior after training or running
+*
+* Precondition: the network has either trained or run
+*/
+void report()
+{
+
+}
+
+/**
 * The main method which either trains or executes the network, depending upon the configuration
 * parameters
 */
@@ -382,6 +410,7 @@ int main()
    loadValues();
    if (!training) run();
    else train();
+   report();
 
    for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
    {
@@ -390,9 +419,7 @@ int main()
       cout << "testCaseNum: " << caseNum << ", output: " << nodes[2][0] << "\n";
    } // for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
 
-   // TODO: printOutOutput()
-
-   // TODO: write down expected form of each input file
+   // TODO: delete the above for loop
 
 } // int main()
 
