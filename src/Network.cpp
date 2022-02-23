@@ -3,7 +3,14 @@
 * Date Created: 2/7/22
 *
 * This file allows for the training and running of an A-B-1 2-connectivity-layer neural network
-* based upon input configuration parameters
+* based upon input configuration parameters.
+*
+* Throughout this file, the index 0 is used to refer to the input activation layer, 1 refers to the
+* hidden layer, and 2 refers to the output layer. Note that those indices apply when the values of
+* nodes are being fetched. For weight values, the index 0 refers to the weights between the input
+* activation layer and the hidden layer, and the index 1 refers to the weights between the hidden
+* layer and the output layer. Moreover, since this network is defined to only have one node in the
+* output layer, the index 0 is used when appropriate to fetch its associated values.
 */
 
 #include <bits/stdc++.h>
@@ -11,58 +18,53 @@
 
 using namespace std;
 
-#define f first
+#define f first // these #define and typedef statements are for shorthand convenience
 #define s second
 
-typedef pair<double, double> pdd;
 typedef pair<vector<double>, vector<double> > pvd;
 
-bool training;                                 // training represents whether the network is in
-                                               // training mode
-int A, B, F;                                   // A is the number of activation nodes in the input
-                                               // activation layer, B is the number of nodes in the
-                                               // hidden layer, and F is the number of output nodes
-int numLayers;                                 // the number of connectivity layers in the network
-int numTruthTableCases;                        // the number of test cases in the truth table
-vector<vector<vector<double> > > weights;      // weights stores the weights, where the first index
-                                               // represents the connectivity layer of an edge, and
-                                               // the second and third indices represent the node
-                                               // from which the edge originates and the node to
-                                               // which the edge goes, respectively
-vector<vector<vector<double> > > deltaWeights; // deltaWeights stores the change in weights between
-                                               // each training iteration, and the indices represent
-                                               // the same characteristics as those for the weights
-                                               // array
-vector<vector<double> > nodes;                 // nodes stores the values of the nodes in the
-                                               // network, where the first index represents the node
-                                               // layer of a node, and the second index represents
-                                               // the index of that node in that node layer
-vector<vector<double> > sums;                  // sums stores the values of the nodes in the network
-                                               // before the activation function is applied i.e. for
-                                               // each node, sums stores the sum over the values of
-                                               // the nodes in the previous node layer multiplied by
-                                               // their associated weight value. Note that the first
-                                               // node layer of sums is just the input activation
-                                               // layer, and the later node layers of sums follows
-                                               // the aforementioned definition. Also note that the
-                                               // indices represent the same characteristics as
-                                               // those in the nodes array above.
-vector<pvd> truth;                             // truth is the truth table, where the index
-                                               // represents the test caseNum index, the first entry
-                                               // in the pair of vectors of doubles contains the
-                                               // values for the input activation nodes, and the
-                                               // second entry in the pair contains the
-                                               // corresponding expected values for the output nodes
-double lambda;                                 // the learning factor value
-double errorThreshold;                         // the error threshold for terminating training
-int maxIterations;                             // the maximum number of iterations after which
-                                               // training will terminate
-bool useRandWeights;                           // useRandWeights represents whether the network
-                                               // should be using random weights or set weights for
-                                               // training
-double minRandVal, maxRandVal;                 // the minimum and maximum random values to use for
-                                               // generating random weight values
-ifstream inputFile;                            // the current input file stream to read from
+// training represents whether the network is in training mode
+bool training;
+// A is the number of activation nodes in the input activation layer, B is the number of nodes in
+// the hidden layer, and F is the number of output nodes
+int A, B, F;
+// the number of connectivity layers in the network
+int numLayers;
+// the number of test cases in the truth table
+int numTruthTableCases;
+// weights stores the weights, where the first index represents the connectivity layer of an edge,
+// and the second and third indices represent the node from which the edge originates and the node
+// to which the edge goes, respectively
+vector<vector<vector<double> > > weights;
+// deltaWeights stores the change in weights between each training iteration, and the indices
+// represent the same characteristics as those for the weights array
+vector<vector<vector<double> > > deltaWeights;
+// nodes stores the values of the nodes in the network, where the first index represents the node
+// layer of a node, and the second index represents the index of that node in that node layer
+vector<vector<double> > nodes;
+// sums stores the values of the nodes in the network before the activation function is applied i.e.
+// for each node, sums stores the sum over the values of the nodes in the previous node layer
+// multiplied by their associated weight value. Note that the first node layer of sums is just the
+// input activation layer, and the later node layers of sums follows the aforementioned definition.
+// Also note that the indices represent the same characteristics as those in the nodes array above.
+vector<vector<double> > sums;
+// truth is the truth table, where the index represents the test caseNum index, the first entry in
+// the pair of vectors of doubles contains the values for the input activation nodes, and the second
+// entry in the pair contains the corresponding expected values for the output nodes
+vector<pvd> truth;
+// the learning factor value
+double lambda;
+// the error threshold for terminating training
+double errorThreshold;
+// the maximum number of iterations after which training will terminate
+int maxIterations;
+// useRandWeights represents whether the network should be using random weights or set weights for
+// training
+bool useRandWeights;
+// the minimum and maximum random values to use for generating random weight values
+double minRandVal, maxRandVal;
+// the current input file stream to read from
+ifstream inputFile;
 
 /**
 * Prompts the user with the input message string for the name of the file from which to read, closes
@@ -274,47 +276,27 @@ double activationFunctionDerivative(double value)
 }
 
 /**
-* Calculates and returns the value of the node in the given node layer at the given index, where
-* both the node layer and index are zero-indexed
-*
-* Precondition: nodeLayer > 0
-*/
-pdd calculateNode(int nodeLayer, int index)
-{
-   double ret = 0;
-
-   if (nodeLayer == 1) // if the current node is in the hidden layer
-   {
-      for (int prev = 0; prev < A; prev++)
-         ret += nodes[0][prev] * weights[0][prev][index];
-   } // if (nodeLayer == 1)
-   else // if the current node is in the output layer
-   {
-      for (int prev = 0; prev < B; prev++)
-         ret += nodes[1][prev] * weights[1][prev][index];
-   } // else
-   return make_pair(activationFunction(ret), ret);
-} // void calculateNode(int nodeLayer, int index)
-
-/**
 * Runs the network
 *
 * Precondition: the input activation layer has already been set
 */
 void run()
 {
+   double nodeVal;
    // calculates and populates the hidden layer
    for (int j = 0; j < B; j++)
    {
-      pdd hiddenNodeVals = calculateNode(1, j);
-      nodes[1][j] = hiddenNodeVals.f;
-      sums[1][j] = hiddenNodeVals.s;
+      nodeVal = 0;
+      for (int k = 0; k < A; k++) nodeVal += nodes[0][k] * weights[0][k][j];
+      nodes[1][j] = activationFunction(nodeVal);
+      sums[1][j] = nodeVal;
    } // for (int j = 0; j < B; j++)
 
    // calculates and populates the output layer
-   pdd outputNodeVals = calculateNode(2, 0);
-   nodes[2][0] = outputNodeVals.f;
-   sums[2][0] = outputNodeVals.s;
+   nodeVal = 0;
+   for (int j = 0; j < B; j++) nodeVal += nodes[1][j] * weights[1][j][0];
+   nodes[2][0] = activationFunction(nodeVal);
+   sums[2][0] = nodeVal;
 } // void run()
 
 /**
@@ -410,36 +392,7 @@ int main()
 
    // TODO: printOutOutput()
 
-
-
-   // TODO: make everything their own functions
-   // TODO: write down the expected structure of the input parameter file in the README file
-   // i.e. numLayers, A, B, F, numTruthTableCases, training, lambda, errorThreshold, maxIterations,
-   // useRandWeights,
-   // minRandVal, maxRandVal
-
-   // TODO: write down the expected structure of each and every input file
-
-   // TODO: write down the fact that each file is expected to be in the same directory as the
-   // executable file
-
-   // TODO: make the iterator variables k, j, and i as set in the design doc based on which layer
-   // TODO: I'm iterating through i.e. k for activation layer, j for hidden layer, i for output
-
-   // TODO: make the weights file a separate file from the config file
-
-   // TODO: can we #include <bits/stdc++.h>? or should we only include specific modules?
-
-   // TODO: can we use typedef and/or #define (check top of file for specifics)?
-
-   // TODO: can we have nested for loops without braces that have one line of code? See
-   // generateRandomWeightValues() and loadWeightValues() and calculateNode(params)
-
-   // TODO: is the 0 in the line "double capitalOmega_j = psi_0 * weights[n][j][0];" a magic number?
-   // See train() at or around line 332
-
-   // TODO: is the spillover indentation on line 334 (or around there) correct? It's the line where
-   // I define capitalPsi_j
+   // TODO: write down expected form of each input file
 
 } // int main()
 
