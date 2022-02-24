@@ -12,10 +12,10 @@ nodes, the number of nodes in the hidden layer, the number of nodes in the outpu
 of test cases in the truth table, and a boolean that is 1 if the network is in training mode or 0
 if the network is in running mode. If the network is in training mode, the following numbers should
 be included in the following order: the value of the learning rate, the value of the error
-threshold to use where the network will cease training if the largest error in a given iteration is
-less than that error threshold, the maximum number of iterations for training, and a boolean that is
-1 if the network should use random values for the initial weight values or 0 if the network should
-pull initial weight values from a file.
+threshold to use where the network will cease training if the largest test case error in a given
+iteration is less than that error threshold, the maximum number of iterations for training, and a
+boolean that is 1 if the network should use random values for the initial weight values or 0 if the
+network should pull initial weight values from a file.
 
 ### Truth Table File
 The input truth table file is expected to contain numbers separated by whitespace. For each test

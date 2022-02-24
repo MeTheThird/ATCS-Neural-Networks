@@ -18,53 +18,76 @@
 
 using namespace std;
 
-#define f first // these #define and typedef statements are for shorthand convenience
+#define f first // these #define statements are for shorthand convenience
 #define s second
-
-typedef pair<vector<double>, vector<double> > pvd;
 
 // training represents whether the network is in training mode
 bool training;
-// A is the number of activation nodes in the input activation layer, B is the number of nodes in
-// the hidden layer, and F is the number of output nodes
+/**
+* A is the number of activation nodes in the input activation layer, B is the number of nodes in the
+* hidden layer, and F is the number of output nodes
+*/
 int A, B, F;
 // the number of connectivity layers in the network
 int numLayers;
 // the number of test cases in the truth table
 int numTruthTableCases;
-// weights stores the weights, where the first index represents the connectivity layer of an edge,
-// and the second and third indices represent the node from which the edge originates and the node
-// to which the edge goes, respectively
+/**
+* weights stores the weights, where the first index represents the connectivity layer of an edge,
+* and the second and third indices represent the node from which the edge originates and the node to
+* which the edge goes, respectively
+*/
 vector<vector<vector<double> > > weights;
-// deltaWeights stores the change in weights between each training iteration, and the indices
-// represent the same characteristics as those for the weights array
+/**
+* deltaWeights stores the change in weights between each training iteration, and the indices
+* represent the same characteristics as those for the weights array
+*/
 vector<vector<vector<double> > > deltaWeights;
-// nodes stores the values of the nodes in the network, where the first index represents the node
-// layer of a node, and the second index represents the index of that node in that node layer
+/**
+* nodes stores the values of the nodes in the network, where the first index represents the node
+* layer of a node, and the second index represents the index of that node in that node layer
+*/
 vector<vector<double> > nodes;
-// sums stores the values of the nodes in the network before the activation function is applied i.e.
-// for each node, sums stores the sum over the values of the nodes in the previous node layer
-// multiplied by their associated weight value. Note that the first node layer of sums is just the
-// input activation layer, and the later node layers of sums follows the aforementioned definition.
-// Also note that the indices represent the same characteristics as those in the nodes array above.
+/**
+* sums stores the values of the nodes in the network before the activation function is applied i.e.
+* for each node, sums stores the sum over the values of the nodes in the previous node layer
+* multiplied by their associated weight value. Note that the first node layer of sums is just the
+* input activation layer, and the later node layers of sums follows the aforementioned definition.
+* Also note that the indices represent the same characteristics as those in the nodes array above.
+*/
 vector<vector<double> > sums;
-// truth is the truth table, where the index represents the test caseNum index, the first entry in
-// the pair of vectors of doubles contains the values for the input activation nodes, and the second
-// entry in the pair contains the corresponding expected values for the output nodes
-vector<pvd> truth;
+/**
+* truth is the truth table, where the index represents the test caseNum index, the first entry in
+* the pair of vectors of doubles contains the values for the input activation nodes, and the second
+* entry in the pair contains the corresponding expected values for the output nodes
+*/
+vector<pair<vector<double>, vector<double> > > truth;
 // the learning factor value
 double lambda;
 // the error threshold for terminating training
 double errorThreshold;
 // the maximum number of iterations after which training will terminate
 int maxIterations;
-// useRandWeights represents whether the network should be using random weights or set weights for
-// training
+/**
+* useRandWeights represents whether the network should be using random weights or set weights for
+* training
+*/
 bool useRandWeights;
 // the minimum and maximum random values to use for generating random weight values
 double minRandVal, maxRandVal;
 // the current input file stream to read from
 ifstream inputFile;
+// integer representing the number of iterations completed while training
+int numIterations = 0;
+// boolean representing whether the maximum number of iterations was reached while training
+bool maxIterationsReached = false;
+/**
+* boolean representing whether the error threshold was reached while training i.e. whether the
+* maximum test case error in a given training iteration was less than the input error threshold
+*/
+bool errorThresholdReached = false;
+// the error reached while training
+double errorReached;
 
 /**
 * Prompts the user with the input message string for the name of the file from which to read, closes
@@ -100,19 +123,20 @@ void config()
 */
 void printOutConfigVals()
 {
-   cout << "numLayers: " << numLayers << ", A: " << A << ", B: " << B << ", F: " << F << "\n";
-   cout << "training: " << training << "\n";
+   cout << "Configuration parameters:\n";
+   cout << "\tnumLayers: " << numLayers << ", A: " << A << ", B: " << B << ", F: " << F << "\n";
+   cout << "\ttraining: " << training << "\n";
 
    if (training)
    {
-      cout << "lambda: " << lambda << ", errorThreshold: " << errorThreshold << ", maxIterations: ";
+      cout << "\tlambda: " << lambda << ", errorThreshold: " << errorThreshold << ", maxIterations: ";
       cout << maxIterations << ", useRandWeights: " << useRandWeights << "\n";
    } // if (training)
 
    if (useRandWeights)
-   {
-      cout << "minRandVal: " << minRandVal << ", maxRandVal: " << maxRandVal << "\n";
-   } // if (useRandWeights)
+      cout << "\tminRandVal: " << minRandVal << ", maxRandVal: " << maxRandVal << "\n";
+
+   cout << "\n";
 } // void printOutConfigVals()
 
 /**
@@ -323,13 +347,9 @@ void run()
 */
 void train()
 {
-   int numIterations = 0;
-   bool maxIterationsReached = false;
-   bool errorThresholdReached = false;
-
    while (!maxIterationsReached && !errorThresholdReached)
    {
-      double maxError = -DBL_MAX; // initialized to the lowest possible double value
+      errorReached = -DBL_MAX; // initialized to the lowest possible double value
       for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
       {
          for (int k = 0; k < A; k++)
@@ -344,7 +364,7 @@ void train()
 
          totalError += omega_0 * omega_0;
          totalError *= 1.0 / 2.0;
-         if (totalError > maxError) maxError = totalError;
+         if (totalError > errorReached) errorReached = totalError;
 
          // calculate and populate the delta weights array for the second connectivity layer
          double psi_0 = 0.0;
@@ -377,30 +397,54 @@ void train()
             weights[1][j][0] += deltaWeights[1][j][0];
       } // for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
 
-      if (numIterations % 10000 == 0) cout << maxError << "\n"; // testing print statement
       numIterations++;
       if (numIterations >= maxIterations) maxIterationsReached = true;
-      if (maxError < errorThreshold) errorThresholdReached = true;
+      if (errorReached < errorThreshold) errorThresholdReached = true;
    } // while (!maxIterationsReached && !errorThresholdReached)
-
-   cout << "Training was terminated because of the following reason(s):\n";
-   if (maxIterationsReached) cout << "The maximum number of iterations was reached\n";
-   if (errorThresholdReached) cout << "The error threshold was reached\n";
 } // void train()
 
 /**
-* Reports on the network's behavior after training or running
+* Reports on the network's behavior after training or running, where the boolean parameter
+* doInitialReport represents whether this method should print out the non-truth table portion of the
+* report or print out the truth table portion of the report, and the integer parameter testCaseNum
+* represents the index of the test case on which to report if doInitialReport is false
 *
 * Precondition: the network has either trained or run
 */
-void report()
+void report(bool doInitialReport, int testCaseNum)
 {
+   if (doInitialReport)
+   {
+      printOutConfigVals();
+      if (training)
+      {
+         cout << "Training was terminated because of the following reason(s):\n";
+         if (maxIterationsReached) cout << "\tThe maximum number of iterations was reached\n";
+         if (errorThresholdReached) cout << "\tThe error threshold was reached\n";
+         cout << "\n";
 
+         cout << "Relevant values at the end of training:\n";
+         cout << "\tThe number of iterations reached was " << numIterations << "\n";
+         cout << "\tThe error reached was " << errorReached << "\n";
+         cout << "\n";
+      } // if (training)
+   } // if (doInitialReport)
+   else
+   {
+      cout << "Test Case " << testCaseNum + 1 << ":\n";
+      cout << "\tInput activation value(s):";
+      for (int k = 0; k < A; k++) cout << " " << truth[testCaseNum].f[k];
+      cout << "\n\tExpected output value(s):";
+      cout << " " << truth[testCaseNum].s[0];
+      cout << "\n\tNetwork generated output value(s):";
+      cout << " " << nodes[2][0];
+      cout << "\n";
+   } // else
 }
 
 /**
 * The main method which either trains or executes the network, depending upon the configuration
-* parameters
+* parameters, and then outputs a report
 */
 int main()
 {
@@ -410,17 +454,17 @@ int main()
    loadValues();
    if (!training) run();
    else train();
-   report();
-
-   for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
+   report(true, 0);
+   for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
    {
-      for (int k = 0; k < A; k++) nodes[0][k] = truth[caseNum].f[k];
+      for (int k = 0; k < A; k++) nodes[0][k] = truth[testCaseNum].f[k];
       run();
-      cout << "testCaseNum: " << caseNum << ", output: " << nodes[2][0] << "\n";
-   } // for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
+      report(false, testCaseNum);
+   } // for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
 
-   // TODO: delete the above for loop
-
+   // TODO: do single-line comments that aren't inline need to be in the block comment format? See
+   // the global variables at the top and a bunch of one-line comments throughout the code within
+   // many different functions
 } // int main()
 
 
