@@ -304,7 +304,7 @@ void loadActivationValues()
 } // void loadActivationValues()
 
 /**
-* Loads the appropriate values into the correponding global variable arrays depending upon the
+* Loads the appropriate values into the corresponding global variable arrays depending upon the
 * network's configuration parameters
 *
 * Precondition: the memory for each necessary array has been carved out
@@ -327,7 +327,7 @@ double activationFunction(double value)
 } // double activationFunction(double value)
 
 /**
-* Returns the dervivative, evaluated at the given value, of the activation function defined above
+* Returns the derivative, evaluated at the given value, of the activation function defined above
 *
 * Precondition: the activation function is differentiable
 */
@@ -479,27 +479,3 @@ int main()
       report(false, testCaseNum);
    } // for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
 } // int main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
