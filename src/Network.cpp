@@ -7,10 +7,12 @@
 *
 * Throughout this file, the index 0 is used to refer to the input activation layer, 1 refers to the
 * hidden layer, and 2 refers to the output layer. Note that those indices apply when the values of
-* nodes are being fetched. For weight values, the index 0 refers to the weights between the input
-* activation layer and the hidden layer, and the index 1 refers to the weights between the hidden
-* layer and the output layer. Moreover, since this network is defined to only have one node in the
-* output layer, the index 0 is used when appropriate to fetch its associated values.
+* nodes are being fetched or memory is being allocated. For weight values, the index 0 refers to the
+* weights between the input activation layer and the hidden layer, and the index 1 refers to the
+* weights between the hidden layer and the output layer. Moreover, since this network is defined to
+* only have one node in the output layer, the index 0 is used when appropriate to fetch its
+* associated values. In short, the 0s, 1s, and 2s present throughout this code are used because of
+* the design doc and are not magic numbers.
 */
 
 #include <bits/stdc++.h>
@@ -21,16 +23,22 @@ using namespace std;
 #define f first // these #define statements are for shorthand convenience
 #define s second
 
-// training represents whether the network is in training mode
+/**
+* training represents whether the network is in training mode
+*/
 bool training;
 /**
 * A is the number of activation nodes in the input activation layer, B is the number of nodes in the
 * hidden layer, and F is the number of output nodes
 */
 int A, B, F;
-// the number of connectivity layers in the network
+/**
+* the number of connectivity layers in the network
+*/
 int numLayers;
-// the number of test cases in the truth table
+/**
+* the number of test cases in the truth table
+*/
 int numTruthTableCases;
 /**
 * weights stores the weights, where the first index represents the connectivity layer of an edge,
@@ -62,31 +70,47 @@ vector<vector<double> > sums;
 * entry in the pair contains the corresponding expected values for the output nodes
 */
 vector<pair<vector<double>, vector<double> > > truth;
-// the learning factor value
+/**
+* the learning factor value
+*/
 double lambda;
-// the error threshold for terminating training
+/**
+* the error threshold for terminating training
+*/
 double errorThreshold;
-// the maximum number of iterations after which training will terminate
+/**
+* the maximum number of iterations after which training will terminate
+*/
 int maxIterations;
 /**
 * useRandWeights represents whether the network should be using random weights or set weights for
 * training
 */
 bool useRandWeights;
-// the minimum and maximum random values to use for generating random weight values
+/**
+* the minimum and maximum random values to use for generating random weight values
+*/
 double minRandVal, maxRandVal;
-// the current input file stream to read from
+/**
+* the current input file stream to read from
+*/
 ifstream inputFile;
-// integer representing the number of iterations completed while training
+/**
+* integer representing the number of iterations completed while training
+*/
 int numIterations = 0;
-// boolean representing whether the maximum number of iterations was reached while training
+/**
+* boolean representing whether the maximum number of iterations was reached while training
+*/
 bool maxIterationsReached = false;
 /**
 * boolean representing whether the error threshold was reached while training i.e. whether the
 * maximum test case error in a given training iteration was less than the input error threshold
 */
 bool errorThresholdReached = false;
-// the error reached while training
+/**
+* the error reached while training
+*/
 double errorReached;
 
 /**
@@ -124,7 +148,8 @@ void config()
 void printOutConfigVals()
 {
    cout << "Configuration parameters:\n";
-   cout << "\tnumLayers: " << numLayers << ", A: " << A << ", B: " << B << ", F: " << F << "\n";
+   cout << "\tnumLayers: " << numLayers << ", A: " << A << ", B: " << B << ", F: " << F;
+   cout << ", numTruthTableCases: " << numTruthTableCases << "\n";
    cout << "\ttraining: " << training << "\n";
 
    if (training)
@@ -147,26 +172,24 @@ void printOutConfigVals()
 */
 void allocateWeightsArrays()
 {
-   weights.resize(2);
-   if (training) deltaWeights.resize(2);
+   weights.resize(numLayers);
+   if (training) deltaWeights.resize(numLayers);
 
-   // allocates memory for the first connectivity layer
-   weights[0].resize(B);
-   if (training) deltaWeights[0].resize(B);
-   for (int j = 0; j < B; j++)
-   {
-      weights[0][j].resize(F);
-      if (training) deltaWeights[0][j].resize(F);
-   } // for (int j = 0; j < B; j++)
-
-   // allocates memory for the second connectivity layer
-   weights[1].resize(A);
-   if (training) deltaWeights[1].resize(A);
+   weights[0].resize(A); // allocates memory for the first connectivity layer
+   if (training) deltaWeights[0].resize(A);
    for (int k = 0; k < A; k++)
    {
-      weights[1][k].resize(B);
-      if (training) deltaWeights[1][k].resize(B);
+      weights[0][k].resize(B);
+      if (training) deltaWeights[0][k].resize(B);
    } // for (int k = 0; k < A; k++)
+
+   weights[1].resize(B); // allocates memory for the second connectivity layer
+   if (training) deltaWeights[1].resize(B);
+   for (int j = 0; j < B; j++)
+   {
+      weights[1][j].resize(F);
+      if (training) deltaWeights[1][j].resize(F);
+   } // for (int j = 0; j < B; j++)
 } // void allocateWeightsArray()
 
 /**
@@ -193,10 +216,10 @@ void allocateMemory()
 {
    allocateWeightsArrays();
    allocateTruthTableArray();
-   // the number of node layers is always one greater than the number of connectivity layers, so
-   // the number of layers for this A-B-1 network must be 3
-   nodes.resize(3);
-   sums.resize(3);
+
+   // the number of node layers is always one greater than the number of connectivity layers
+   nodes.resize(numLayers + 1);
+   sums.resize(numLayers + 1);
 
    nodes[0].resize(A); // the first node layer is the activation layer with A nodes
    sums[0].resize(A);
@@ -230,13 +253,11 @@ void loadWeightValues()
 {
    setupFileInputWithMessage("What is the full name of the file containing the weights?");
 
-   // load the first connectivity layer of the weights array
-   for (int k = 0; k < A; k++)
+   for (int k = 0; k < A; k++) // load the first connectivity layer of the weights array
       for (int j = 0; j < B; j++)
          inputFile >> weights[0][k][j];
 
-   // load the second connectivity layer of the weights array
-   for (int j = 0; j < B; j++)
+   for (int j = 0; j < B; j++) // load the second connectivity layer of the weights array
       inputFile >> weights[1][j][0];
 } // void loadWeightValues()
 
@@ -323,8 +344,7 @@ double activationFunctionDerivative(double value)
 void run()
 {
    double nodeVal;
-   // calculates and populates the hidden layer
-   for (int j = 0; j < B; j++)
+   for (int j = 0; j < B; j++) // calculates and populates the hidden layer
    {
       nodeVal = 0.0;
       for (int k = 0; k < A; k++) nodeVal += nodes[0][k] * weights[0][k][j];
@@ -332,11 +352,10 @@ void run()
       sums[1][j] = nodeVal;
    } // for (int j = 0; j < B; j++)
 
-   // calculates and populates the output layer
-   nodeVal = 0.0;
+   nodeVal = 0.0;              // calculates and populates the output layer
    for (int j = 0; j < B; j++) nodeVal += nodes[1][j] * weights[1][j][0];
-   nodes[2][0] = activationFunction(nodeVal);
-   sums[2][0] = nodeVal;
+   nodes[numLayers][0] = activationFunction(nodeVal);
+   sums[numLayers][0] = nodeVal;
 } // void run()
 
 /**
@@ -359,7 +378,7 @@ void train()
          } // for (int k = 0; k < A; k++)
          run();
 
-         double omega_0 = truth[testCaseNum].s[0] - nodes[2][0];
+         double omega_0 = truth[testCaseNum].s[0] - nodes[numLayers][0];
          double totalError = 0.0;
 
          totalError += omega_0 * omega_0;
@@ -368,7 +387,7 @@ void train()
 
          // calculate and populate the delta weights array for the second connectivity layer
          double psi_0 = 0.0;
-         psi_0 = omega_0 * activationFunctionDerivative(sums[2][0]);
+         psi_0 = omega_0 * activationFunctionDerivative(sums[numLayers][0]);
          for (int j = 0; j < B; j++)
          {
             double partialDeriv = -nodes[1][j] * psi_0;
@@ -387,13 +406,11 @@ void train()
             } // for (int k = 0; k < A; k++)
          } // for (int j = 0; j < B; j++)
 
-         // update the weights array for the first connectivity layer
-         for (int k = 0; k < A; k++)
+         for (int k = 0; k < A; k++) // update the weights array for the first connectivity layer
             for (int j = 0; j < B; j++)
                weights[0][k][j] += deltaWeights[0][k][j];
 
-         // update the weights array for the second connectivity layer
-         for (int j = 0; j < B; j++)
+         for (int j = 0; j < B; j++) // update the weights array for the second connectivity layer
             weights[1][j][0] += deltaWeights[1][j][0];
       } // for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
 
@@ -437,7 +454,7 @@ void report(bool doInitialReport, int testCaseNum)
       cout << "\n\tExpected output value(s):";
       cout << " " << truth[testCaseNum].s[0];
       cout << "\n\tNetwork generated output value(s):";
-      cout << " " << nodes[2][0];
+      cout << " " << nodes[numLayers][0];
       cout << "\n";
    } // else
 }
@@ -461,10 +478,6 @@ int main()
       run();
       report(false, testCaseNum);
    } // for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
-
-   // TODO: do single-line comments that aren't inline need to be in the block comment format? See
-   // the global variables at the top and a bunch of one-line comments throughout the code within
-   // many different functions
 } // int main()
 
 
