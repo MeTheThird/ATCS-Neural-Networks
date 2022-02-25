@@ -334,7 +334,7 @@ double activationFunction(double value)
 double activationFunctionDerivative(double value)
 {
    return activationFunction(value) * (1.0 - activationFunction(value));
-}
+} // double activationFunctionDerivative(double value)
 
 /**
 * Runs the network
@@ -457,7 +457,7 @@ void report(bool doInitialReport, int testCaseNum)
       cout << " " << nodes[numLayers][0];
       cout << "\n";
    } // else
-}
+} // void report(bool doInitialReport, int testCaseNum)
 
 /**
 * The main method which either trains or executes the network, depending upon the configuration
