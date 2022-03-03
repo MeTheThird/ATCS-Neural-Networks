@@ -349,7 +349,7 @@ double activationFunctionDerivative(double value)
 } // double activationFunctionDerivative(double value)
 
 /**
- * Runs the network, assuming the network is in running mode
+ * Runs the network, storing the values of the nodes in the nodes array
  *
  * Precondition: the input activation layer values and the network's weight values have been set,
  * and the network is in running mode
@@ -373,10 +373,11 @@ void runRunning()
 
       nodes[numLayers][i] = activationFunction(nodeVal);
    } // for (int i = 0; i < F; i++)
-} // void runTraining()
+} // void runRunning()
 
 /**
- * Runs the network, assuming the network is in training mode
+ * Runs the network, storing the values of the nodes in the nodes array and the values of the
+ * weighted sums in the sums array
  *
  * Precondition: the input activation layer values and the network's weight values have been set,
  * and the network is in training mode
