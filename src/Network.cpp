@@ -21,39 +21,37 @@ using namespace std;
 #define f first // these #define statements are for shorthand convenience
 #define s second
 
-/**
- * Represents whether the network is in training mode
- */
-bool training;
+bool training;  // Represents whether the network is in training mode
+
 /**
  * The number of activation nodes in the input activation layer, B is the number of nodes in the
  * hidden layer, and F is the number of output nodes
  */
 int A, B, F;
-/**
- * The number of connectivity layers in the network
- */
-int numLayers;
-/**
- * The number of test cases in the truth table
- */
-int numTruthTableCases;
+
+int numLayers;          // The number of connectivity layers in the network
+
+int numTruthTableCases; // The number of test cases in the truth table
+
 /**
  * Stores the weights, where the first index represents the connectivity layer of an edge, and the
  * second and third indices represent the node from which the edge originates and the node to which
  * the edge goes, respectively
  */
 vector<vector<vector<double> > > weights;
+
 /**
  * Stores the change in weights between each training iteration, and the indices represent the same
  * characteristics as those for the weights array
  */
 vector<vector<vector<double> > > deltaWeights;
+
 /**
  * Stores the values of the nodes in the network, where the first index represents the node layer of
  * a node, and the second index represents the index of that node in that node layer
  */
 vector<vector<double> > nodes;
+
 /**
  * Stores the values of the nodes in the network before the activation function is applied i.e. for
  * each node, sums stores the sum over the values of the nodes in the previous node layer multiplied
@@ -62,62 +60,45 @@ vector<vector<double> > nodes;
  * note that the indices represent the same characteristics as those in the nodes array above.
  */
 vector<vector<double> > sums;
+
 /**
  * The truth table, where the index represents the test caseNum index, the first entry in the pair
  * of vectors of doubles contains the values for the input activation nodes, and the second entry in
  * the pair contains the corresponding expected values for the output nodes
  */
 vector<pair<vector<double>, vector<double> > > truth;
-/**
- * The learning factor value
- */
-double lambda;
-/**
- * The error threshold for terminating training
- */
-double errorThreshold;
-/**
- * The maximum number of iterations after which training will terminate
- */
-int maxIterations;
+
+double lambda;         // The learning factor value
+
+double errorThreshold; // The error threshold for terminating training
+
+int maxIterations;     // The maximum number of iterations after which training will terminate
+
 /**
  * useRandWeights represents whether the network should be using random weights or set weights for
  * training
  */
 bool useRandWeights;
-/**
- * The minimum and maximum random values to use for generating random weight values
- */
+
+// The minimum and maximum random values to use for generating random weight values
 double minRandVal, maxRandVal;
-/**
- * The current input file stream to read from
- */
-ifstream inputFile;
-/**
- * Integer representing the number of iterations completed while training
- */
-int numIterations = 0;
-/**
- * Boolean representing whether the maximum number of iterations was reached while training
- */
+
+ifstream inputFile;    // The current input file stream to read from
+
+int numIterations = 0; // Integer representing the number of iterations completed while training
+
+// Boolean representing whether the maximum number of iterations was reached while training
 bool maxIterationsReached = false;
+
 /**
  * Boolean representing whether the error threshold was reached while training i.e. whether the
  * maximum test case error in a given training iteration was less than the input error threshold
  */
 bool errorThresholdReached = false;
-/**
- * The error reached while training
- */
-double errorReached;
-/**
- * Stores the omega_i values calculated during training
- */
-vector<double> omega;
-/**
- * Stores the psi_i values calculated during training
- */
-vector<double> psi;
+
+double errorReached;  // The error reached while training
+
+vector<double> psi;   // Stores the psi_i values calculated during training
 
 /**
  * Prompts the user with the input message string for the name of the file from which to read, closes
@@ -130,12 +111,14 @@ void setupFileInputWithMessage(string message, string defaultFilename)
 {
    string filename;
    cout << message << "\n";
+
    cin >> filename;
    cout << "\n"; // add a new line after the user's input to make the program output easier to read
 
    if (filename == ".") filename = defaultFilename;
 
    if (inputFile.is_open()) inputFile.close();
+
    inputFile.open(filename);
 } // void setupFileInput(string filename)
 
@@ -146,9 +129,11 @@ void setupFileInputWithMessage(string message, string defaultFilename)
 void config()
 {
    setupFileInputWithMessage("What is the full name of your input parameter file?", "test.conf");
-   inputFile >> numLayers >> A >> B >> F >> numTruthTableCases;
-   inputFile >> training;
+
+   inputFile >> numLayers >> A >> B >> F >> numTruthTableCases >> training;
+
    if (training) inputFile >> lambda >> errorThreshold >> maxIterations >> useRandWeights;
+
    if (useRandWeights) inputFile >> minRandVal >> maxRandVal;
 } // void config()
 
@@ -187,6 +172,7 @@ void allocateWeightsArrays()
 
    weights[0].resize(A); // allocates memory for the first connectivity layer
    if (training) deltaWeights[0].resize(A);
+
    for (int k = 0; k < A; k++)
    {
       weights[0][k].resize(B);
@@ -195,6 +181,7 @@ void allocateWeightsArrays()
 
    weights[1].resize(B); // allocates memory for the second connectivity layer
    if (training) deltaWeights[1].resize(B);
+
    for (int j = 0; j < B; j++)
    {
       weights[1][j].resize(F);
@@ -210,24 +197,13 @@ void allocateWeightsArrays()
 void allocateTruthTableArray()
 {
    truth.resize(numTruthTableCases);
+
    for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
    {
       truth[caseNum].f.resize(A);
       truth[caseNum].s.resize(F);
    } // for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
 } // void allocateTruthTableArray()
-
-/**
- * Allocates the necessary memory for the arrays used exclusively in training, which are currently
- * the omega and psi arrays
- * 
- * Precondition: the configuration parameters have been set
- */
-void allocateTrainingArrays()
-{
-   omega.resize(F);
-   psi.resize(F);
-} // void allocateTrainingArrays()
 
 /**
  * Allocates the necessary memory for the global variables based upon the configuration parameters
@@ -237,19 +213,23 @@ void allocateTrainingArrays()
 void allocateMemory()
 {
    allocateWeightsArrays();
+
    allocateTruthTableArray();
-   if (training) allocateTrainingArrays();
+
+   if (training) psi.resize(F);
 
    // the number of node layers is always one greater than the number of connectivity layers
    nodes.resize(numLayers + 1);
-   sums.resize(numLayers + 1);
+   if (training) sums.resize(numLayers + 1);
 
    nodes[0].resize(A); // the first node layer is the activation layer with A nodes
-   sums[0].resize(A);
+   if (training) sums[0].resize(A);
+
    nodes[1].resize(B); // the second node layer is the hidden layer with B nodes
-   sums[1].resize(B);
+   if (training) sums[1].resize(B);
+
    nodes[2].resize(F); // the third and final node layer is the output layer with F nodes
-   sums[2].resize(F);
+   if (training) sums[2].resize(F);
 } // void allocateMemory()
 
 /**
@@ -298,6 +278,7 @@ double getRandomNumberBetween(double minValue, double maxValue)
    random_device rd;
    mt19937 generator(rd());
    uniform_real_distribution<> distr(minValue, maxValue);
+
    return distr(generator);
 } // double getRandomNumberBetween(double minValue, double maxValue)
 
@@ -328,6 +309,7 @@ void loadActivationValues()
 {
    setupFileInputWithMessage("What is the full name of the file containing the input activation "
                              "values?", "activations.in");
+
    for (int k = 0; k < A; k++) inputFile >> nodes[0][k];
 } // void loadActivationValues()
 
@@ -340,8 +322,10 @@ void loadActivationValues()
 void loadValues()
 {
    loadTruthTableValues();
+
    if (!training || !useRandWeights) loadWeightValues();
    else generateRandomWeightValues();
+
    if (!training) loadActivationValues();
 } // void loadValues()
 
@@ -365,29 +349,60 @@ double activationFunctionDerivative(double value)
 } // double activationFunctionDerivative(double value)
 
 /**
- * Runs the network
+ * Runs the network, assuming the network is in running mode
  *
- * Precondition: the input activation layer values and the network's weight values have been set
+ * Precondition: the input activation layer values and the network's weight values have been set,
+ * and the network is in running mode
  */
-void run()
+void runRunning()
 {
    double nodeVal;
+
    for (int j = 0; j < B; j++) // calculates and populates the hidden layer
    {
       nodeVal = 0.0;
       for (int k = 0; k < A; k++) nodeVal += nodes[0][k] * weights[0][k][j];
+
+      nodes[1][j] = activationFunction(nodeVal);
+   } // for (int j = 0; j < B; j++)
+
+   for (int i = 0; i < F; i++) // calculates and populates the output layer
+   {
+      nodeVal = 0.0;
+      for (int j = 0; j < B; j++) nodeVal += nodes[1][j] * weights[1][j][i];
+
+      nodes[numLayers][i] = activationFunction(nodeVal);
+   } // for (int i = 0; i < F; i++)
+} // void runTraining()
+
+/**
+ * Runs the network, assuming the network is in training mode
+ *
+ * Precondition: the input activation layer values and the network's weight values have been set,
+ * and the network is in training mode
+ */
+void runTraining()
+{
+   double nodeVal;
+
+   for (int j = 0; j < B; j++) // calculates and populates the hidden layer
+   {
+      nodeVal = 0.0;
+      for (int k = 0; k < A; k++) nodeVal += nodes[0][k] * weights[0][k][j];
+
       nodes[1][j] = activationFunction(nodeVal);
       sums[1][j] = nodeVal;
    } // for (int j = 0; j < B; j++)
 
-   nodeVal = 0.0;
    for (int i = 0; i < F; i++) // calculates and populates the output layer
    {
+      nodeVal = 0.0;
       for (int j = 0; j < B; j++) nodeVal += nodes[1][j] * weights[1][j][i];
+
       nodes[numLayers][i] = activationFunction(nodeVal);
       sums[numLayers][i] = nodeVal;
    } // for (int i = 0; i < F; i++)
-} // void run()
+} // void runTraining()
 
 /**
  * Trains the network, stopping when either the maximum number of iterations has been reached or
@@ -400,25 +415,28 @@ void train()
    while (!maxIterationsReached && !errorThresholdReached)
    {
       errorReached = -DBL_MAX; // initialized to the lowest possible double value
+
       for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
       {
-         for (int k = 0; k < A; k++)
-         {
-            nodes[0][k] = truth[testCaseNum].f[k];
-            sums[0][k] = truth[testCaseNum].f[k];
-         } // for (int k = 0; k < A; k++)
-         run();
+         for (int k = 0; k < A; k++) nodes[0][k] = truth[testCaseNum].f[k];
+
+         runTraining();
+
+         double totalError = 0.0;
+         double omega_i;
+         double partialDeriv;
 
          // calculate and populate the delta weights array for the second connectivity layer
-         double totalError = 0.0;
          for (int i = 0; i < F; i++)
          {
-            omega[i] = truth[testCaseNum].s[i] - nodes[numLayers][i];
-            totalError += omega[i] * omega[i];
-            psi[i] = omega[i] * activationFunctionDerivative(sums[numLayers][i]);
+            omega_i = truth[testCaseNum].s[i] - nodes[numLayers][i];
+            totalError += omega_i * omega_i;
+
+            psi[i] = omega_i * activationFunctionDerivative(sums[numLayers][i]);
+
             for (int j = 0; j < B; j++)
             {
-               double partialDeriv = -nodes[1][j] * psi[i];
+               partialDeriv = -nodes[1][j] * psi[i];
                deltaWeights[1][j][i] = -lambda * partialDeriv;
             } // for (int j = 0; j < B; j++)
          } // for (int i = 0; i < F; i++)
@@ -427,15 +445,20 @@ void train()
          totalError *= 1.0 / 2.0;
          if (totalError > errorReached) errorReached = totalError;
 
+         double capitalOmega_j;
+         double capitalPsi_j;
+
          // calculate and populate the delta weights array for the first connectivity layer
          for (int j = 0; j < B; j++)
          {
-            double capitalOmega_j = 0.0;
+            capitalOmega_j = 0.0;
             for (int i = 0; i < F; i++) capitalOmega_j += psi[i] * weights[1][j][i];
-            double capitalPsi_j = capitalOmega_j * activationFunctionDerivative(sums[1][j]);
+
+            capitalPsi_j = capitalOmega_j * activationFunctionDerivative(sums[1][j]);
+
             for (int k = 0; k < A; k++)
             {
-               double partialDeriv = -nodes[0][k] * capitalPsi_j;
+               partialDeriv = -nodes[0][k] * capitalPsi_j;
                deltaWeights[0][k][j] = -lambda * partialDeriv;
             } // for (int k = 0; k < A; k++)
          } // for (int j = 0; j < B; j++)
@@ -444,8 +467,8 @@ void train()
             for (int j = 0; j < B; j++)
                weights[0][k][j] += deltaWeights[0][k][j];
 
-         for (int i = 0; i < F; i++) // update the weights array for the second connectivity layer
-            for (int j = 0; j < B; j++)
+         for (int j = 0; j < B; j++) // update the weights array for the second connectivity layer
+            for (int i = 0; i < F; i++)
                weights[1][j][i] += deltaWeights[1][j][i];
       } // for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
 
@@ -468,6 +491,7 @@ void report(bool doInitialReport, int testCaseNum)
    if (doInitialReport)
    {
       printOutConfigVals();
+
       if (training)
       {
          cout << "Training was terminated because of the following reason(s):\n";
@@ -484,10 +508,13 @@ void report(bool doInitialReport, int testCaseNum)
    else
    {
       cout << "Test Case " << testCaseNum + 1 << ":\n";
+
       cout << "\tInput activation value(s):";
       for (int k = 0; k < A; k++) cout << " " << truth[testCaseNum].f[k];
+
       cout << "\n\tExpected output value(s):";
       for (int i = 0; i < F; i++) cout << " " << truth[testCaseNum].s[i];
+
       cout << "\n\tNetwork generated output value(s):";
       for (int i = 0; i < F; i++) cout << " " << nodes[numLayers][i];
       cout << "\n";
@@ -501,16 +528,22 @@ void report(bool doInitialReport, int testCaseNum)
 int main()
 {
    config();
+
    printOutConfigVals();
+
    allocateMemory();
+
    loadValues();
-   if (!training) run();
+
+   if (!training) runRunning();
    else train();
+
    report(true, 0);
    for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
    {
       for (int k = 0; k < A; k++) nodes[0][k] = truth[testCaseNum].f[k];
-      run();
+      runRunning();
+
       report(false, testCaseNum);
    } // for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
 } // int main()
