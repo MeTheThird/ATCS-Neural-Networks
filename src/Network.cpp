@@ -7,9 +7,9 @@
  *
  * Throughout this file, the index 0 is used to refer to the input activation layer, 1 refers to the
  * hidden layer, and 2 refers to the output layer. Note that those indices apply when the values of
- * nodes are being fetched or memory is being allocated. For weight values, the index 0 refers to the
- * weights between the input activation layer and the hidden layer, and the index 1 refers to the
- * weights between the hidden layer and the output layer. In short, the 0s, 1s, and 2s present
+ * nodes are being fetched or memory is being allocated. For weight values, the index 0 refers to
+ * the weights between the input activation layer and the hidden layer, and the index 1 refers to
+ * the weights between the hidden layer and the output layer. In short, the 0s, 1s, and 2s present
  * throughout this code are used because of the design doc and are not magic numbers.
  */
 
@@ -101,11 +101,11 @@ double errorReached;  // The error reached while training
 vector<double> psi;   // Stores the psi_i values calculated during training
 
 /**
- * Prompts the user with the input message string for the name of the file from which to read, closes
- * the old input file stream if open, and sets the global variable inputFile to a new input file
- * stream associated with the file the user inputted. If the user inputs the period character, the
- * method parameter defaultFilename is used as the name of the file for the input file stream (mainly
- * to expedite testing).
+ * Prompts the user with the input message string for the name of the file from which to read,
+ * closes the old input file stream if open, and sets the global variable inputFile to a new input
+ * file stream associated with the file the user inputted. If the user inputs the period character,
+ * the method parameter defaultFilename is used as the name of the file for the input file stream
+ * (mainly to expedite testing).
  */
 void setupFileInputWithMessage(string message, string defaultFilename)
 {
@@ -149,8 +149,9 @@ void printOutConfigVals()
 
    if (training)
    {
-      cout << "\tlambda: " << lambda << ", errorThreshold: " << errorThreshold << ", maxIterations: ";
-      cout << maxIterations << ", useRandWeights: " << useRandWeights << "\n";
+      cout << "\tlambda: " << lambda << ", errorThreshold: " << errorThreshold;
+      cout << ", maxIterations: " << maxIterations << ", useRandWeights: " << useRandWeights;
+      cout << "\n";
    } // if (training)
 
    if (useRandWeights)
@@ -481,9 +482,9 @@ void train()
 
 /**
  * Reports on the network's behavior after training or running, where the boolean parameter
- * doInitialReport represents whether this method should print out the non-truth table portion of the
- * report or print out the truth table portion of the report, and the integer parameter testCaseNum
- * represents the index of the test case on which to report if doInitialReport is false
+ * doInitialReport represents whether this method should print out the non-truth table portion of
+ * the report or print out the truth table portion of the report, and the integer parameter
+ * testCaseNum represents the index of the test case on which to report if doInitialReport is false
  *
  * Precondition: the network has either trained or run
  */
