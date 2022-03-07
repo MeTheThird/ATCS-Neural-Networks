@@ -120,7 +120,7 @@ void setupFileInputWithMessage(string message, string defaultFilename)
    if (inputFile.is_open()) inputFile.close();
 
    inputFile.open(filename);
-} // void setupFileInput(string filename)
+} // void setupFileInputWithMessage(string message, string defaultFilename)
 
 /**
  * Takes in the input configuration parameters and sets their corresponding global variable values
