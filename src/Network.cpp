@@ -33,6 +33,15 @@ int numLayers;          // The number of connectivity layers in the network
 
 int numTruthTableCases; // The number of test cases in the truth table
 
+// the default filename to use for the configuration parameters file
+string DEFAULT_CONFIG_FILENAME = "test.conf";
+
+/**
+ * These variables represent the default filenames to use for taking in the truth table, weight
+ * values, and input activation values, respectively
+ */
+string defaultTruthTableFilename, defaultWeightsFilename, defaultInputActivationsFilename;
+
 /**
  * Stores the weights, where the first index represents the connectivity layer of an edge, and the
  * second and third indices represent the node from which the edge originates and the node to which
@@ -101,47 +110,52 @@ double errorReached;  // The error reached while training
 vector<double> psi;   // Stores the psi_i values calculated during training
 
 /**
- * Prompts the user with the input message string for the name of the file from which to read,
- * closes the old input file stream if open, and sets the global variable inputFile to a new input
- * file stream associated with the file the user inputted. If the user inputs the period character,
- * the method parameter defaultFilename is used as the name of the file for the input file stream
- * (mainly to expedite testing).
+ * Closes the old input file stream if open and sets the global variable inputFile to a new input
+ * file stream associated with the file named defaultFilename
  */
-void setupFileInputWithMessage(string message, string defaultFilename)
+void setupFileInput(string defaultFilename)
 {
-   string filename;
-   cout << message << "\n";
-
-   cin >> filename;
-   cout << "\n"; // add a new line after the user's input to make the program output easier to read
-
-   if (filename == ".") filename = defaultFilename;
-
    if (inputFile.is_open()) inputFile.close();
 
-   inputFile.open(filename);
-} // void setupFileInputWithMessage(string message, string defaultFilename)
+   inputFile.open(defaultFilename);
+} // void setupFileInput(string defaultFilename)
 
 /**
- * Takes in the input configuration parameters and sets their corresponding global variable values
- * accordingly
+ * Processes the input configuration parameters and sets their corresponding global variable values
+ * accordingly, using the standard C++ command line input arguments as parameters for this method to
+ * determine whether the user has overriden the default name of the configuration parameters file
  */
-void config()
+void config(int argc, char* argv[])
 {
-   setupFileInputWithMessage("What is the full name of your input parameter file?", "test.conf");
+   // sets up file input for the configuration parameters file
+   if (argc > 1) setupFileInput(argv[1]);
+   else setupFileInput(DEFAULT_CONFIG_FILENAME);
 
-   inputFile >> numLayers >> A >> B >> F >> numTruthTableCases >> training;
+   inputFile >> numLayers >> A >> B >> F >> numTruthTableCases >> defaultTruthTableFilename;
+   inputFile >> training;
 
    if (training) inputFile >> lambda >> errorThreshold >> maxIterations >> useRandWeights;
 
+   if (!training || !useRandWeights) inputFile >> defaultWeightsFilename;
+
+   if (!training) inputFile >> defaultInputActivationsFilename;
+
    if (useRandWeights) inputFile >> minRandVal >> maxRandVal;
-} // void config()
+} // void config(int argc, char* argv[])
 
 /**
  * Prints out the configuration parameters used
  */
 void printOutConfigVals()
 {
+   cout << "Names of files taken from the configuration parameters file:\n";
+   cout << "\tTruth table filename: " << defaultTruthTableFilename << "\n";
+   if (!training || !useRandWeights)
+      cout << "\tWeight values filename: " << defaultWeightsFilename << "\n";
+   if (!training)
+      cout << "\tActivation values filename: " << defaultInputActivationsFilename << "\n";
+   cout << "\n";
+
    cout << "Configuration parameters:\n";
    cout << "\tnumLayers: " << numLayers << ", A: " << A << ", B: " << B << ", F: " << F;
    cout << ", numTruthTableCases: " << numTruthTableCases << "\n";
@@ -240,8 +254,7 @@ void allocateMemory()
  */
 void loadTruthTableValues()
 {
-   setupFileInputWithMessage("What is the full name of the file containing the truth table?",
-                             "truthTable.in");
+   setupFileInput(defaultTruthTableFilename);
 
    for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
    {
@@ -257,8 +270,7 @@ void loadTruthTableValues()
  */
 void loadWeightValues()
 {
-   setupFileInputWithMessage("What is the full name of the file containing the weights?",
-                             "weights.in");
+   setupFileInput(defaultWeightsFilename);
 
    for (int k = 0; k < A; k++) // load the first connectivity layer of the weights array
       for (int j = 0; j < B; j++)
@@ -308,8 +320,7 @@ void generateRandomWeightValues()
  */
 void loadActivationValues()
 {
-   setupFileInputWithMessage("What is the full name of the file containing the input activation "
-                             "values?", "activations.in");
+   setupFileInput(defaultInputActivationsFilename);
 
    for (int k = 0; k < A; k++) inputFile >> nodes[0][k];
 } // void loadActivationValues()
@@ -490,23 +501,18 @@ void train()
  */
 void report(bool doInitialReport, int testCaseNum)
 {
-   if (doInitialReport)
+   if (doInitialReport && training)
    {
-      printOutConfigVals();
+      cout << "Training was terminated because of the following reason(s):\n";
+      if (maxIterationsReached) cout << "\tThe maximum number of iterations was reached\n";
+      if (errorThresholdReached) cout << "\tThe error threshold was reached\n";
+      cout << "\n";
 
-      if (training)
-      {
-         cout << "Training was terminated because of the following reason(s):\n";
-         if (maxIterationsReached) cout << "\tThe maximum number of iterations was reached\n";
-         if (errorThresholdReached) cout << "\tThe error threshold was reached\n";
-         cout << "\n";
-
-         cout << "Relevant values at the end of training:\n";
-         cout << "\tThe number of iterations reached was " << numIterations << "\n";
-         cout << "\tThe error reached was " << errorReached << "\n";
-         cout << "\n";
-      } // if (training)
-   } // if (doInitialReport)
+      cout << "Relevant values at the end of training:\n";
+      cout << "\tThe number of iterations reached was " << numIterations << "\n";
+      cout << "\tThe error reached was " << errorReached << "\n";
+      cout << "\n";
+   } // if (doInitialReport && training)
    else
    {
       cout << "Test Case " << testCaseNum + 1 << ":\n";
@@ -524,12 +530,13 @@ void report(bool doInitialReport, int testCaseNum)
 } // void report(bool doInitialReport, int testCaseNum)
 
 /**
- * The main method which either trains or executes the network, depending upon the configuration
- * parameters, and then outputs a report
+ * The main method either trains or executes the network, depending upon the configuration
+ * parameters, and then outputs a report. This method takes the standard C++ command line input
+ * arguments as parameters
  */
-int main()
+int main(int argc, char* argv[])
 {
-   config();
+   config(argc, argv);
 
    printOutConfigVals();
 
@@ -548,4 +555,4 @@ int main()
 
       report(false, testCaseNum);
    } // for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
-} // int main()
+} // int main(int argc, char* argv[])

@@ -6,16 +6,39 @@ Each input file for the executable of Network.cpp is expected to be in the same 
 executable. Note that examples of each file can be found in the src/ folder in this repository.
 
 ### Configuration Parameters File
-The input configuration parameter file is expected to contain numbers separated by whitespace in the
-following order: the number of connectivity layers in the network, the number of input activation
-nodes, the number of nodes in the hidden layer, the number of nodes in the output layer, the number
-of test cases in the truth table, and a boolean that is 1 if the network is in training mode or 0
-if the network is in running mode. If the network is in training mode, the following numbers should
-be included in the following order: the value of the learning rate, the value of the error
-threshold to use where the network will cease training if the largest test case error in a given
-iteration is less than that error threshold, the maximum number of iterations for training, and a
-boolean that is 1 if the network should use random values for the initial weight values or 0 if the
-network should pull initial weight values from a file.
+The input configuration parameter file is expected to contain the following values separated by
+whitespace in the following order:
+   the number of connectivity layers in the network,
+   the number of input activation nodes,
+   the number of nodes in the hidden layer,
+   the number of nodes in the output layer,
+   the number of test cases in the truth table,
+   the name of the truth table file,
+   and a boolean that is 1 if the network is in training mode or 0 if the network is in running
+   mode.
+
+If the network is in training mode, the following numbers should be included after the above in the
+following order:
+   the value of the learning rate,
+   the value of the error threshold to use where the network will cease training if the largest test
+   case error in a given iteration is less than that error threshold,
+   the maximum number of iterations for training,
+   and a boolean that is 1 if the network should use random values for the initial weight values or
+   0 if the network should pull initial weight values from a file.
+
+If the network is either not in training mode or should pull initial weight values from a file,
+   the name of the weights file
+should be included after the above values.
+
+If the network is in running mode,
+   the name of the input activation layer file
+should be included after the above values.
+
+Finally, if the network is in training mode and should use random values for the initial weight
+values, the following numbers should be included after the above in the following order:
+   the minimum bound of the random range to use for weights and
+   the maximum bound of the random range to use for weights.
+
 
 ### Truth Table File
 The input truth table file is expected to contain numbers separated by whitespace. For each test
@@ -44,24 +67,3 @@ The input activation layer file is expected to contain the values of the input a
 use for running the network in order (where the first value corresponds to the first input
 activation node, the second value corresponds to the second input activation node, and so on and so
 forth) and separated by whitespace.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
