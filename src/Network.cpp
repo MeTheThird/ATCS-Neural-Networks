@@ -2,8 +2,8 @@
  * Rohan Thakur
  * Date Created: 2/7/22
  *
- * This file allows for the training and running of an A-B-C 2-connectivity-layer neural network
- * based upon input configuration parameters.
+ * This file allows for the training (using backpropagation) and running of an A-B-C
+ * 2-connectivity-layer neural network based upon input configuration parameters.
  *
  * Throughout this file, the index 0 is used to refer to the input activation layer, 1 refers to the
  * hidden layer, and 2 refers to the output layer. Note that those indices apply when the values of
@@ -50,14 +50,9 @@ string defaultTruthTableFilename, defaultWeightsFilename, defaultInputActivation
 vector<vector<vector<double> > > weights;
 
 /**
- * Stores the change in weights between each training iteration, and the indices represent the same
- * characteristics as those for the weights array
- */
-vector<vector<vector<double> > > deltaWeights;
-
-/**
- * Stores the values of the nodes in the network, where the first index represents the node layer of
- * a node, and the second index represents the index of that node in that node layer
+ * Stores the values of the nodes in the network after the activation function is applied, where the
+ * first index represents the node layer of a node, and the second index represents the index of
+ * that node in that node layer
  */
 vector<vector<double> > nodes;
 
@@ -92,9 +87,16 @@ bool useRandWeights;
 // The minimum and maximum random values to use for generating random weight values
 double minRandVal, maxRandVal;
 
-ifstream inputFile;    // The current input file stream to read from
+ifstream inputFile;                    // The current input file stream to read from
 
-int numIterations = 0; // Integer representing the number of iterations completed while training
+vector<double> psi;                    // Stores the psi_i values calculated during training
+
+// Integer representing the number of iterations completed while training
+int numIterations = 0;
+
+double errorReached;                   // The error reached while training
+
+chrono::duration<double> trainingTime; // the amount of time training took
 
 // Boolean representing whether the maximum number of iterations was reached while training
 bool maxIterationsReached = false;
@@ -104,10 +106,6 @@ bool maxIterationsReached = false;
  * maximum test case error in a given training iteration was less than the input error threshold
  */
 bool errorThresholdReached = false;
-
-double errorReached;  // The error reached while training
-
-vector<double> psi;   // Stores the psi_i values calculated during training
 
 /**
  * Closes the old input file stream if open and sets the global variable inputFile to a new input
@@ -175,33 +173,19 @@ void printOutConfigVals()
 } // void printOutConfigVals()
 
 /**
- * Allocates the necessary memory for the weights array and the deltaWeights array, only allocating
- * memory for deltaWeights if the network is in training mode
+ * Allocates the necessary memory for the weights array
  *
  * Precondition: the configuration parameters have been set
  */
 void allocateWeightsArrays()
 {
    weights.resize(numLayers);
-   if (training) deltaWeights.resize(numLayers);
 
    weights[0].resize(A); // allocates memory for the first connectivity layer
-   if (training) deltaWeights[0].resize(A);
-
-   for (int k = 0; k < A; k++)
-   {
-      weights[0][k].resize(B);
-      if (training) deltaWeights[0][k].resize(B);
-   } // for (int k = 0; k < A; k++)
+   for (int k = 0; k < A; k++) weights[0][k].resize(B);
 
    weights[1].resize(B); // allocates memory for the second connectivity layer
-   if (training) deltaWeights[1].resize(B);
-
-   for (int j = 0; j < B; j++)
-   {
-      weights[1][j].resize(F);
-      if (training) deltaWeights[1][j].resize(F);
-   } // for (int j = 0; j < B; j++)
+   for (int j = 0; j < B; j++) weights[1][j].resize(F);
 } // void allocateWeightsArray()
 
 /**
@@ -238,7 +222,6 @@ void allocateMemory()
    if (training) sums.resize(numLayers + 1);
 
    nodes[0].resize(A); // the first node layer is the activation layer with A nodes
-   if (training) sums[0].resize(A);
 
    nodes[1].resize(B); // the second node layer is the hidden layer with B nodes
    if (training) sums[1].resize(B);
@@ -388,14 +371,17 @@ void runRunning()
 } // void runRunning()
 
 /**
- * Runs the network, storing the values of the nodes in the nodes array and the values of the
- * weighted sums in the sums array
+ * Runs the network, storing the values of the nodes in the nodes array, the values of the weighted
+ * sums in the sums array, and the psi_i values in the psi array. Returns the total error for the
+ * test case at the input index represented by the parameter testCaseNum.
  *
  * Precondition: the input activation layer values and the network's weight values have been set,
  * and the network is in training mode
  */
-void runTraining()
+double runTraining(int testCaseNum)
 {
+   double totalError = 0.0;
+   double omega_i;
    double nodeVal;
 
    for (int j = 0; j < B; j++) // calculates and populates the hidden layer
@@ -403,19 +389,27 @@ void runTraining()
       nodeVal = 0.0;
       for (int k = 0; k < A; k++) nodeVal += nodes[0][k] * weights[0][k][j];
 
-      nodes[1][j] = activationFunction(nodeVal);
       sums[1][j] = nodeVal;
+      nodes[1][j] = activationFunction(nodeVal);
    } // for (int j = 0; j < B; j++)
 
-   for (int i = 0; i < F; i++) // calculates and populates the output layer
+   // calculates and populates the output layer and relevant training values
+   for (int i = 0; i < F; i++)
    {
       nodeVal = 0.0;
       for (int j = 0; j < B; j++) nodeVal += nodes[1][j] * weights[1][j][i];
 
-      nodes[numLayers][i] = activationFunction(nodeVal);
       sums[numLayers][i] = nodeVal;
+      nodes[numLayers][i] = activationFunction(nodeVal);
+
+      omega_i = truth[testCaseNum].s[i] - nodes[numLayers][i];
+      totalError += omega_i * omega_i;
+
+      psi[i] = omega_i * activationFunctionDerivative(sums[numLayers][i]);
    } // for (int i = 0; i < F; i++)
-} // void runTraining()
+
+   return totalError * 1.0 / 2.0;
+} // double runTraining(int testCaseNum)
 
 /**
  * Trains the network, stopping when either the maximum number of iterations has been reached or
@@ -433,56 +427,30 @@ void train()
       {
          for (int k = 0; k < A; k++) nodes[0][k] = truth[testCaseNum].f[k];
 
-         runTraining();
-
-         double totalError = 0.0;
-         double omega_i;
-         double partialDeriv;
-
-         // calculate and populate the delta weights array for the second connectivity layer
-         for (int i = 0; i < F; i++)
-         {
-            omega_i = truth[testCaseNum].s[i] - nodes[numLayers][i];
-            totalError += omega_i * omega_i;
-
-            psi[i] = omega_i * activationFunctionDerivative(sums[numLayers][i]);
-
-            for (int j = 0; j < B; j++)
-            {
-               partialDeriv = -nodes[1][j] * psi[i];
-               deltaWeights[1][j][i] = -lambda * partialDeriv;
-            } // for (int j = 0; j < B; j++)
-         } // for (int i = 0; i < F; i++)
+         double totalError = runTraining(testCaseNum);
 
          // update the maximum error for the current iteration if needed
-         totalError *= 1.0 / 2.0;
          if (totalError > errorReached) errorReached = totalError;
 
          double capitalOmega_j;
          double capitalPsi_j;
 
-         // calculate and populate the delta weights array for the first connectivity layer
+         // calculates by how much we must change all weights and updates all weights accordingly
          for (int j = 0; j < B; j++)
          {
             capitalOmega_j = 0.0;
-            for (int i = 0; i < F; i++) capitalOmega_j += psi[i] * weights[1][j][i];
-
-            capitalPsi_j = capitalOmega_j * activationFunctionDerivative(sums[1][j]);
-
-            for (int k = 0; k < A; k++)
-            {
-               partialDeriv = -nodes[0][k] * capitalPsi_j;
-               deltaWeights[0][k][j] = -lambda * partialDeriv;
-            } // for (int k = 0; k < A; k++)
-         } // for (int j = 0; j < B; j++)
-
-         for (int k = 0; k < A; k++) // update the weights array for the first connectivity layer
-            for (int j = 0; j < B; j++)
-               weights[0][k][j] += deltaWeights[0][k][j];
-
-         for (int j = 0; j < B; j++) // update the weights array for the second connectivity layer
             for (int i = 0; i < F; i++)
-               weights[1][j][i] += deltaWeights[1][j][i];
+            {
+               capitalOmega_j += psi[i] * weights[1][j][i];
+
+               // updates the ji weight because we're done with it
+               weights[1][j][i] += lambda * nodes[1][j] * psi[i];
+            } // for (int i = 0; i < F; i++)
+
+            // updates the kj weights
+            capitalPsi_j = capitalOmega_j * activationFunctionDerivative(sums[1][j]);
+            for (int k = 0; k < A; k++) weights[0][k][j] += lambda * nodes[0][k] * capitalPsi_j;
+         } // for (int j = 0; j < B; j++)
       } // for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
 
       numIterations++;
@@ -511,6 +479,7 @@ void report(bool doInitialReport, int testCaseNum)
       cout << "Relevant values at the end of training:\n";
       cout << "\tThe number of iterations reached was " << numIterations << "\n";
       cout << "\tThe error reached was " << errorReached << "\n";
+      cout << "\tThe amount of time training took was " << trainingTime.count() << " seconds\n";
       cout << "\n";
    } // if (doInitialReport && training)
    else
@@ -545,7 +514,16 @@ int main(int argc, char* argv[])
    loadValues();
 
    if (!training) runRunning();
-   else train();
+   else
+   {
+      chrono::time_point<chrono::high_resolution_clock> start =
+         chrono::high_resolution_clock::now();
+
+      train();
+
+      chrono::time_point<chrono::high_resolution_clock> end = chrono::high_resolution_clock::now();
+      trainingTime = end - start;
+   }
 
    report(true, 0);
    for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
