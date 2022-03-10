@@ -231,7 +231,7 @@ void allocateMemory()
 } // void allocateMemory()
 
 /**
- * Loads in the truth table values from a file the user has created
+ * Loads in the truth table values from a file
  *
  * Precondition: the memory for the truth table values has been carved out
  */
@@ -247,13 +247,50 @@ void loadTruthTableValues()
 } // void loadTruthTableValues()
 
 /**
- * Loads in the weight values from a file the user has created
+ * Loads in the weight values from a file, verifying that the network configuration parameters in
+ * the file match the input configuration parameters provided by the configuration file
  *
  * Precondition: the memory for the network's weight values has been carved out
  */
 void loadWeightValues()
 {
    setupFileInput(defaultWeightsFilename);
+
+   // verifies that the network configuration parameters in the file match the expected values
+   int inputNumLayers, inputA, inputB, inputF;
+   inputFile >> inputNumLayers >> inputA >> inputB >> inputF;
+
+   if (inputNumLayers != numLayers || inputA != A || inputB != B || inputF != F)
+   {
+      cout << "The following error(s) were encountered when attempting to load weights from the ";
+      cout << "specified file:\n";
+
+      if (inputNumLayers != numLayers)
+      {
+         cout << "\tExpected " << numLayers << " layers, but the weights file had ";
+         cout << inputNumLayers << " layers\n";
+      } // if (inputNumLayers != numLayers)
+
+      if (inputA != A)
+      {
+         cout << "\tExpected " << A << " input activation nodes, but the weights file had ";
+         cout << inputA << " input activation nodes\n";
+      } // if (inputA != A)
+
+      if (inputB != B)
+      {
+         cout << "\tExpected " << B << " hidden activation nodes, but the weights file had ";
+         cout << inputB << " hidden activation nodes\n";
+      } // if (inputB != B)
+
+      if (inputF != F)
+      {
+         cout << "\tExpected " << F << " output nodes, but the weights file had " << inputF;
+         cout << " output nodes\n";
+      } // if (inputF != F)
+
+      cout << "\n";
+   } // if (inputNumLayers != numLayers || inputA != A || inputB != B || inputF != F)
 
    for (int k = 0; k < A; k++) // load the first connectivity layer of the weights array
       for (int j = 0; j < B; j++)
@@ -297,7 +334,7 @@ void generateRandomWeightValues()
 } // void generateRandomWeightValues()
 
 /**
- * Loads in the activation values to use for running the network from a file the user has created
+ * Loads in the activation values to use for running the network from a file
  *
  * Precondition: the memory for the input activation layer has been carved out
  */
@@ -412,6 +449,36 @@ double runTraining(int testCaseNum)
 } // double runTraining(int testCaseNum)
 
 /**
+ * Saves the weights array to a file with the input parameter name filename and in the format for
+ * weights files delineated in the README document
+ */
+void saveWeightsToFile(string filename)
+{
+   ofstream outputFile;
+   outputFile.open(filename);
+
+   // outputs the network configuration data to the file for verification purposes
+   outputFile << numLayers << " " << A << " " << B << " " << F << "\n\n";
+
+   for (int k = 0; k < A; k++) // outputs the first connectivity layer of the weights array
+   {
+      for (int j = 0; j < B; j++)
+         outputFile << weights[0][k][j] << " ";
+      outputFile << "\n";
+   } // for (int k = 0; k < A; k++)
+   outputFile << "\n";
+
+   for (int i = 0; i < F; i++) // outputs the second connectivity layer of the weights array
+   {
+      for (int j = 0; j < B; j++)
+         outputFile << weights[1][j][i] << " ";
+      outputFile << "\n";
+   } // for (int i = 0; i < F; i++)
+
+   outputFile.close();
+} // void saveWeightsToFile(string filename)
+
+/**
  * Trains the network, stopping when either the maximum number of iterations has been reached or
  * the maximum error across all test cases is lower than the error threshold
  *
@@ -523,7 +590,7 @@ int main(int argc, char* argv[])
 
       chrono::time_point<chrono::high_resolution_clock> end = chrono::high_resolution_clock::now();
       trainingTime = end - start;
-   }
+   } // else
 
    report(true, 0);
    for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)

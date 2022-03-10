@@ -1,9 +1,11 @@
 # ATCS-Neural-Networks
 This repository contains work I've done for my ATCS Neural Networks class.
 
+
 ## Input File Structures
 Each input file for the executable of Network.cpp is expected to be in the same directory as the
 executable. Note that examples of each file can be found in the src/ folder in this repository.
+
 
 ### Configuration Parameters File
 The input configuration parameter file is expected to contain the following values separated by
@@ -50,17 +52,26 @@ immediately before the output layer values. Note that the first output layer val
 first output layer node, the second output layer value maps to the second output layer node, etc.
 This pattern should then be repeated in the truth table file for each truth table test case.
 
+
 ### Weights File
-The input weights file is expected to contain weight values separated by whitespace. The values
-should represent the weight values of the connections in the first connectivity layer followed by
-the weight values of the connections in the second connectivity layer. The first connectivity layer
-weight values should be in the order of the connections from the first input activation node to the
-hidden layer nodes in order from the first to last hidden layer nodes, the connections from the
-second input activation node to the hidden layer nodes in the aforementioned order, and so on and
-so forth. The second connectivity layer weight values should be in the same order except connecting
-the hidden layer nodes to the output layer nodes i.e. all the weights from the first hidden layer
-node to the output layer nodes in order should be followed by all the weights from the second
-hidden layer node to the output layer nodes, and so on and so forth.
+The input weights file is expected to contain numbers separated by whitespace. To verify that the
+correct weights file is being used, the first numbers should be the following in the following
+order:
+   the number of connectivity layers in the network,
+   the number of input activation nodes,
+   the number of nodes in the hidden layer,
+   and the number of nodes in the output layer.
+
+The following values should represent the weight values of the connections in the first connectivity
+layer followed by the weight values of the connections in the second connectivity layer. The first
+connectivity layer weight values should be in the order of the connections from the first input
+activation node to the hidden layer nodes in order from the first to last hidden layer nodes, the
+connections from the second input activation node to the hidden layer nodes in the aforementioned
+order, and so on and so forth. The second connectivity layer weight values should be in the same
+order except connecting the hidden layer nodes to the output layer nodes i.e. all the weights from
+the first hidden layer node to the output layer nodes in order should be followed by all the weights
+from the second hidden layer node to the output layer nodes, and so on and so forth.
+
 
 ### Input Activation Layer File
 The input activation layer file is expected to contain the values of the input activation layer to
