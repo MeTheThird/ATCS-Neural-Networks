@@ -154,6 +154,7 @@ void printOutConfigVals()
 {
    cout << "Names of files taken from the configuration parameters file:\n";
    cout << "\tTruth table filename: " << defaultTruthTableFilename << "\n";
+   if (training) cout << "\tOutput weights filename: " << outputWeightsFilename << "\n";
    if (!training || !useRandWeights)
       cout << "\tWeight values filename: " << defaultWeightsFilename << "\n";
    if (!training)
