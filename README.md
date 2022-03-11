@@ -19,8 +19,9 @@ whitespace in the following order:
    and a boolean that is 1 if the network is in training mode or 0 if the network is in running
    mode.
 
-If the network is in training mode, the following numbers should be included after the above in the
+If the network is in training mode, the following values should be included after the above in the
 following order:
+   the name of the file to which the weights should be written while training,
    the value of the learning rate,
    the value of the error threshold to use where the network will cease training if the largest test
    case error in a given iteration is less than that error threshold,

@@ -42,6 +42,8 @@ string DEFAULT_CONFIG_FILENAME = "test.conf";
  */
 string defaultTruthTableFilename, defaultWeightsFilename, defaultInputActivationsFilename;
 
+string outputWeightsFilename; // the name of the file to which to write the weights during training
+
 /**
  * Stores the weights, where the first index represents the connectivity layer of an edge, and the
  * second and third indices represent the node from which the edge originates and the node to which
@@ -132,7 +134,11 @@ void config(int argc, char* argv[])
    inputFile >> numLayers >> A >> B >> F >> numTruthTableCases >> defaultTruthTableFilename;
    inputFile >> training;
 
-   if (training) inputFile >> lambda >> errorThreshold >> maxIterations >> useRandWeights;
+   if (training)
+   {
+      inputFile >> outputWeightsFilename >> lambda >> errorThreshold >> maxIterations;
+      inputFile >> useRandWeights;
+   } // if (training)
 
    if (!training || !useRandWeights) inputFile >> defaultWeightsFilename;
 
@@ -260,37 +266,10 @@ void loadWeightValues()
    int inputNumLayers, inputA, inputB, inputF;
    inputFile >> inputNumLayers >> inputA >> inputB >> inputF;
 
-   if (inputNumLayers != numLayers || inputA != A || inputB != B || inputF != F)
-   {
-      cout << "The following error(s) were encountered when attempting to load weights from the ";
-      cout << "specified file:\n";
-
-      if (inputNumLayers != numLayers)
-      {
-         cout << "\tExpected " << numLayers << " layers, but the weights file had ";
-         cout << inputNumLayers << " layers\n";
-      } // if (inputNumLayers != numLayers)
-
-      if (inputA != A)
-      {
-         cout << "\tExpected " << A << " input activation nodes, but the weights file had ";
-         cout << inputA << " input activation nodes\n";
-      } // if (inputA != A)
-
-      if (inputB != B)
-      {
-         cout << "\tExpected " << B << " hidden activation nodes, but the weights file had ";
-         cout << inputB << " hidden activation nodes\n";
-      } // if (inputB != B)
-
-      if (inputF != F)
-      {
-         cout << "\tExpected " << F << " output nodes, but the weights file had " << inputF;
-         cout << " output nodes\n";
-      } // if (inputF != F)
-
-      cout << "\n";
-   } // if (inputNumLayers != numLayers || inputA != A || inputB != B || inputF != F)
+   assert(inputNumLayers == numLayers);
+   assert(inputA == A);
+   assert(inputB == B);
+   assert(inputF == F);
 
    for (int k = 0; k < A; k++) // load the first connectivity layer of the weights array
       for (int j = 0; j < B; j++)
@@ -524,6 +503,8 @@ void train()
       if (numIterations >= maxIterations) maxIterationsReached = true;
       if (errorReached < errorThreshold) errorThresholdReached = true;
    } // while (!maxIterationsReached && !errorThresholdReached)
+
+   saveWeightsToFile(outputWeightsFilename);
 } // void train()
 
 /**
