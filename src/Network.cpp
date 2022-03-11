@@ -154,11 +154,15 @@ void printOutConfigVals()
 {
    cout << "Names of files taken from the configuration parameters file:\n";
    cout << "\tTruth table filename: " << defaultTruthTableFilename << "\n";
-   if (training) cout << "\tOutput weights filename: " << outputWeightsFilename << "\n";
+
+   if (training)
+      cout << "\tOutput weights filename: " << outputWeightsFilename << "\n";
+   else
+      cout << "\tActivation values filename: " << defaultInputActivationsFilename << "\n";
+   
    if (!training || !useRandWeights)
       cout << "\tWeight values filename: " << defaultWeightsFilename << "\n";
-   if (!training)
-      cout << "\tActivation values filename: " << defaultInputActivationsFilename << "\n";
+
    cout << "\n";
 
    cout << "Configuration parameters:\n";
@@ -249,6 +253,7 @@ void loadTruthTableValues()
    for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
    {
       for (int k = 0; k < A; k++) inputFile >> truth[caseNum].f[k];
+
       for (int i = 0; i < F; i++) inputFile >> truth[caseNum].s[i];
    } // for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
 } // void loadTruthTableValues()
@@ -444,14 +449,17 @@ void saveWeightsToFile(string filename)
    {
       for (int j = 0; j < B; j++)
          outputFile << weights[0][k][j] << " ";
+
       outputFile << "\n";
    } // for (int k = 0; k < A; k++)
+
    outputFile << "\n";
 
    for (int i = 0; i < F; i++) // outputs the second connectivity layer of the weights array
    {
       for (int j = 0; j < B; j++)
          outputFile << weights[1][j][i] << " ";
+
       outputFile << "\n";
    } // for (int i = 0; i < F; i++)
 
@@ -502,6 +510,7 @@ void train()
 
       numIterations++;
       if (numIterations >= maxIterations) maxIterationsReached = true;
+
       if (errorReached < errorThreshold) errorThresholdReached = true;
    } // while (!maxIterationsReached && !errorThresholdReached)
 
@@ -521,8 +530,11 @@ void report(bool doInitialReport, int testCaseNum)
    if (doInitialReport && training)
    {
       cout << "Training was terminated because of the following reason(s):\n";
+
       if (maxIterationsReached) cout << "\tThe maximum number of iterations was reached\n";
+
       if (errorThresholdReached) cout << "\tThe error threshold was reached\n";
+
       cout << "\n";
 
       cout << "Relevant values at the end of training:\n";
@@ -543,6 +555,7 @@ void report(bool doInitialReport, int testCaseNum)
 
       cout << "\n\tNetwork generated output value(s):";
       for (int i = 0; i < F; i++) cout << " " << nodes[numLayers][i];
+
       cout << "\n";
    } // else
 } // void report(bool doInitialReport, int testCaseNum)
@@ -562,7 +575,8 @@ int main(int argc, char* argv[])
 
    loadValues();
 
-   if (!training) runRunning();
+   if (!training)
+      runRunning();
    else
    {
       chrono::time_point<chrono::high_resolution_clock> start =
@@ -578,6 +592,7 @@ int main(int argc, char* argv[])
    for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
    {
       for (int k = 0; k < A; k++) nodes[0][k] = truth[testCaseNum].f[k];
+
       runRunning();
 
       report(false, testCaseNum);
