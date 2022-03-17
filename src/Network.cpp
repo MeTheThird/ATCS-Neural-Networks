@@ -2,15 +2,17 @@
  * Rohan Thakur
  * Date Created: 2/7/22
  *
- * This file allows for the training (using backpropagation) and running of an A-B-C
- * 2-connectivity-layer neural network based upon input configuration parameters.
+ * This file allows for the training (using backpropagation) and running of an A-B-C-D
+ * 3-connectivity-layer neural network based upon input configuration parameters.
  *
  * Throughout this file, the index 0 is used to refer to the input activation layer, 1 refers to the
- * hidden layer, and 2 refers to the output layer. Note that those indices apply when the values of
- * nodes are being fetched or memory is being allocated. For weight values, the index 0 refers to
- * the weights between the input activation layer and the hidden layer, and the index 1 refers to
- * the weights between the hidden layer and the output layer. In short, the 0s, 1s, and 2s present
- * throughout this code are used because of the design doc and are not magic numbers.
+ * first hidden layer, 2 refers to the second hidden layer, and 3 refers to the output layer. Note
+ * that those indices apply when the values of nodes are being fetched or memory is being allocated.
+ * For weight values, the index 0 refers to the weights between the input activation layer and the
+ * hidden layer, the index 1 refers to the weights between the first hidden layer and the second
+ * hidden layer, and the index 2 refers to the weights between the second hidden layer and the
+ * output layer. In short, the 0s, 1s, 2s, and 3s present throughout this code are used because of
+ * the design doc and are not magic numbers.
  */
 
 #include <bits/stdc++.h>
@@ -25,9 +27,10 @@ bool training;  // Represents whether the network is in training mode
 
 /**
  * The number of activation nodes in the input activation layer, B is the number of nodes in the
- * hidden layer, and F is the number of output nodes
+ * first hidden layer, C is the number of nodes in the second hidden layer, and F is the number of
+ * output nodes
  */
-int A, B, F;
+int A, B, C, F;
 
 int numLayers;          // The number of connectivity layers in the network
 

@@ -12,7 +12,7 @@ The input configuration parameter file is expected to contain the following valu
 whitespace in the following order:
    the number of connectivity layers in the network,
    the number of input activation nodes,
-   the number of nodes in the hidden layer,
+   the number of nodes in the hidden layers in order (each separated by whitespace),
    the number of nodes in the output layer,
    the number of test cases in the truth table,
    the name of the truth table file,
