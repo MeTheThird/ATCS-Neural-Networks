@@ -430,7 +430,7 @@ double runTraining(int testCaseNum)
       psi[i] = omega_i * activationFunctionDerivative(sums[numLayers][i]);
    } // for (int i = 0; i < F; i++)
 
-   return totalError * 1.0 / 2.0;
+   return totalError / 2.0;
 } // double runTraining(int testCaseNum)
 
 /**
@@ -468,7 +468,8 @@ void saveWeightsToFile(string filename)
 
 /**
  * Trains the network, stopping when either the maximum number of iterations has been reached or
- * the maximum error across all test cases is lower than the error threshold
+ * the maximum error across all test cases is lower than the error threshold, and saves the weights
+ * to the appropriate file specified in the configuration file at the end of training
  *
  * Precondition: the truth table values and the network's weight values have been set
  */

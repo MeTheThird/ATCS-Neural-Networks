@@ -63,15 +63,12 @@ order:
    the number of nodes in the hidden layer,
    and the number of nodes in the output layer.
 
-The following values should represent the weight values of the connections in the first connectivity
-layer followed by the weight values of the connections in the second connectivity layer. The first
-connectivity layer weight values should be in the order of the connections from the first input
-activation node to the hidden layer nodes in order from the first to last hidden layer nodes, the
-connections from the second input activation node to the hidden layer nodes in the aforementioned
-order, and so on and so forth. The second connectivity layer weight values should be in the same
-order except connecting the hidden layer nodes to the output layer nodes i.e. all the weights from
-the first hidden layer node to the output layer nodes in order should be followed by all the weights
-from the second hidden layer node to the output layer nodes, and so on and so forth.
+The following values should represent the weight values of the connections in the connectivity
+layers of the network. Each connectivity layer weight values should be in the order of the
+connections from the first activation node in the left layer to the nodes in the right layer, in
+order from the first to last nodes in the right layer, followed by the connections between the
+second activation node in the left layer to the nodes in the right layer, in the aforementioned
+order, and so on and so forth.
 
 
 ### Input Activation Layer File
