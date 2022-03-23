@@ -94,7 +94,9 @@ double minRandVal, maxRandVal;
 
 ifstream inputFile;                    // The current input file stream to read from
 
-vector<double> psi;                    // Stores the psi_i values calculated during training
+vector<double> psi_i;                  // Stores the psi_i values calculated during training
+
+vector<double> capitalPsi_j;           // Stores the capitalPsi_j values calculated during training
 
 // Integer representing the number of iterations completed while training
 int numIterations = 0;
@@ -134,7 +136,7 @@ void config(int argc, char* argv[])
    if (argc > 1) setupFileInput(argv[1]);
    else setupFileInput(DEFAULT_CONFIG_FILENAME);
 
-   inputFile >> numLayers >> A >> B >> F >> numTruthTableCases >> defaultTruthTableFilename;
+   inputFile >> numLayers >> A >> B >> C >> F >> numTruthTableCases >> defaultTruthTableFilename;
    inputFile >> training;
 
    if (training)
@@ -169,8 +171,9 @@ void printOutConfigVals()
    cout << "\n";
 
    cout << "Configuration parameters:\n";
-   cout << "\tnumLayers: " << numLayers << ", A: " << A << ", B: " << B << ", F: " << F;
-   cout << ", numTruthTableCases: " << numTruthTableCases << "\n";
+   cout << "\tnumLayers: " << numLayers << ", A: " << A << ", B: " << B << ", C: " << C;
+   cout << ", F: " << F << "\n";
+   cout << "\tnumTruthTableCases: " << numTruthTableCases << "\n";
    cout << "\ttraining: " << training << "\n";
 
    if (training)
@@ -196,10 +199,13 @@ void allocateWeightsArrays()
    weights.resize(numLayers);
 
    weights[0].resize(A); // allocates memory for the first connectivity layer
-   for (int k = 0; k < A; k++) weights[0][k].resize(B);
+   for (int m = 0; m < A; m++) weights[0][m].resize(B);
 
    weights[1].resize(B); // allocates memory for the second connectivity layer
-   for (int j = 0; j < B; j++) weights[1][j].resize(F);
+   for (int k = 0; k < B; k++) weights[1][k].resize(C);
+
+   weights[2].resize(C); // allocates memory for the third connectivity layer
+   for (int j = 0; j < C; j++) weights[2][j].resize(F);
 } // void allocateWeightsArray()
 
 /**
@@ -229,7 +235,11 @@ void allocateMemory()
 
    allocateTruthTableArray();
 
-   if (training) psi.resize(F);
+   if (training)
+   {
+      psi_i.resize(F);
+      capitalPsi_j.resize(C);
+   } // if (training)
 
    // the number of node layers is always one greater than the number of connectivity layers
    nodes.resize(numLayers + 1);
@@ -237,11 +247,14 @@ void allocateMemory()
 
    nodes[0].resize(A); // the first node layer is the activation layer with A nodes
 
-   nodes[1].resize(B); // the second node layer is the hidden layer with B nodes
+   nodes[1].resize(B); // the second node layer is the first hidden layer with B nodes
    if (training) sums[1].resize(B);
 
-   nodes[2].resize(F); // the third and final node layer is the output layer with F nodes
-   if (training) sums[2].resize(F);
+   nodes[2].resize(C); // the third node layer is the second hidden layer with C nodes
+   if (training) sums[2].resize(C);
+
+   nodes[3].resize(F); // the fourth and final node layer is the output layer with F nodes
+   if (training) sums[3].resize(F);
 } // void allocateMemory()
 
 /**
@@ -255,7 +268,7 @@ void loadTruthTableValues()
 
    for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
    {
-      for (int k = 0; k < A; k++) inputFile >> truth[caseNum].f[k];
+      for (int m = 0; m < A; m++) inputFile >> truth[caseNum].f[m];
 
       for (int i = 0; i < F; i++) inputFile >> truth[caseNum].s[i];
    } // for (int caseNum = 0; caseNum < numTruthTableCases; caseNum++)
@@ -272,21 +285,26 @@ void loadWeightValues()
    setupFileInput(defaultWeightsFilename);
 
    // verifies that the network configuration parameters in the file match the expected values
-   int inputNumLayers, inputA, inputB, inputF;
-   inputFile >> inputNumLayers >> inputA >> inputB >> inputF;
+   int inputNumLayers, inputA, inputB, inputC, inputF;
+   inputFile >> inputNumLayers >> inputA >> inputB >> inputC >> inputF;
 
    assert(inputNumLayers == numLayers);
    assert(inputA == A);
    assert(inputB == B);
+   assert(inputC == C);
    assert(inputF == F);
 
-   for (int k = 0; k < A; k++) // load the first connectivity layer of the weights array
-      for (int j = 0; j < B; j++)
-         inputFile >> weights[0][k][j];
+   for (int m = 0; m < A; m++) // load the first connectivity layer of the weights array
+      for (int k = 0; k < B; k++)
+         inputFile >> weights[0][m][k];
 
-   for (int i = 0; i < F; i++) // load the second connectivity layer of the weights array
-      for (int j = 0; j < B; j++)
-         inputFile >> weights[1][j][i];
+   for (int k = 0; k < B; k++) // load the second connectivity layer of the weights array
+      for (int j = 0; j < C; j++)
+         inputFile >> weights[1][k][j];
+   
+   for (int j = 0; j < C; j++) // load the third connectivity layer of the weights array
+      for (int i = 0; i < F; i++)
+         inputFile >> weights[2][j][i];
 } // void loadWeightValues()
 
 /**
@@ -311,14 +329,19 @@ double getRandomNumberBetween(double minValue, double maxValue)
 void generateRandomWeightValues()
 {
    // randomly generate the first connectivity layer of the weights array
-   for (int k = 0; k < A; k++)
-      for (int j = 0; j < B; j++)
-         weights[0][k][j] = getRandomNumberBetween(minRandVal, maxRandVal);
+   for (int m = 0; m < A; m++)
+      for (int k = 0; k < B; k++)
+         weights[0][m][k] = getRandomNumberBetween(minRandVal, maxRandVal);
 
    // randomly generate the second connectivity layer of the weights array
-   for (int i = 0; i < F; i++)
-      for (int j = 0; j < B; j++)
-         weights[1][j][i] = getRandomNumberBetween(minRandVal, maxRandVal);
+   for (int k = 0; k < B; k++)
+      for (int j = 0; j < C; j++)
+         weights[1][k][j] = getRandomNumberBetween(minRandVal, maxRandVal);
+
+   // randomly generate the third connectivity layer of the weights array
+   for (int j = 0; j < C; j++)
+      for (int i = 0; i < F; i++)
+         weights[2][j][i] = getRandomNumberBetween(minRandVal, maxRandVal);
 } // void generateRandomWeightValues()
 
 /**
@@ -330,7 +353,7 @@ void loadActivationValues()
 {
    setupFileInput(defaultInputActivationsFilename);
 
-   for (int k = 0; k < A; k++) inputFile >> nodes[0][k];
+   for (int m = 0; m < A; m++) inputFile >> nodes[0][m];
 } // void loadActivationValues()
 
 /**
@@ -378,18 +401,26 @@ void runRunning()
 {
    double nodeVal;
 
-   for (int j = 0; j < B; j++) // calculates and populates the hidden layer
+   for (int k = 0; k < B; k++) // calculates and populates the first hidden layer
    {
       nodeVal = 0.0;
-      for (int k = 0; k < A; k++) nodeVal += nodes[0][k] * weights[0][k][j];
+      for (int m = 0; m < A; m++) nodeVal += nodes[0][m] * weights[0][m][k];
 
-      nodes[1][j] = activationFunction(nodeVal);
-   } // for (int j = 0; j < B; j++)
+      nodes[1][k] = activationFunction(nodeVal);
+   } // for (int k = 0; k < B; k++)
+
+   for (int j = 0; j < C; j++) // calculates and populates the second hidden layer
+   {
+      nodeVal = 0.0;
+      for (int k = 0; k < B; k++) nodeVal += nodes[1][k] * weights[1][k][j];
+
+      nodes[2][j] = activationFunction(nodeVal);
+   } // for (int j = 0; j < C; j++)
 
    for (int i = 0; i < F; i++) // calculates and populates the output layer
    {
       nodeVal = 0.0;
-      for (int j = 0; j < B; j++) nodeVal += nodes[1][j] * weights[1][j][i];
+      for (int j = 0; j < B; j++) nodeVal += nodes[2][j] * weights[2][j][i];
 
       nodes[numLayers][i] = activationFunction(nodeVal);
    } // for (int i = 0; i < F; i++)
@@ -409,20 +440,28 @@ double runTraining(int testCaseNum)
    double omega_i;
    double nodeVal;
 
-   for (int j = 0; j < B; j++) // calculates and populates the hidden layer
+   for (int k = 0; k < B; k++) // calculates and populates the first hidden layer
    {
       nodeVal = 0.0;
-      for (int k = 0; k < A; k++) nodeVal += nodes[0][k] * weights[0][k][j];
+      for (int m = 0; m < A; m++) nodeVal += nodes[0][m] * weights[0][m][k];
 
-      sums[1][j] = nodeVal;
-      nodes[1][j] = activationFunction(nodeVal);
-   } // for (int j = 0; j < B; j++)
+      sums[1][k] = nodeVal;
+      nodes[1][k] = activationFunction(nodeVal);
+   } // for (int k = 0; k < B; k++)
 
-   // calculates and populates the output layer and relevant training values
-   for (int i = 0; i < F; i++)
+   for (int j = 0; j < C; j++) // calculates and populates the second hidden layer
    {
       nodeVal = 0.0;
-      for (int j = 0; j < B; j++) nodeVal += nodes[1][j] * weights[1][j][i];
+      for (int k = 0; k < B; k++) nodeVal += nodes[1][k] * weights[1][k][j];
+
+      sums[2][j] = nodeVal;
+      nodes[2][j] = activationFunction(nodeVal);
+   } // for (int j = 0; j < C; j++)
+
+   for (int i = 0; i < F; i++) // calculates and populates the output layer
+   {
+      nodeVal = 0.0;
+      for (int j = 0; j < B; j++) nodeVal += nodes[2][j] * weights[2][j][i];
 
       sums[numLayers][i] = nodeVal;
       nodes[numLayers][i] = activationFunction(nodeVal);
@@ -430,7 +469,7 @@ double runTraining(int testCaseNum)
       omega_i = truth[testCaseNum].s[i] - nodes[numLayers][i];
       totalError += omega_i * omega_i;
 
-      psi[i] = omega_i * activationFunctionDerivative(sums[numLayers][i]);
+      psi_i[i] = omega_i * activationFunctionDerivative(sums[numLayers][i]);
    } // for (int i = 0; i < F; i++)
 
    return totalError / 2.0;
@@ -446,22 +485,32 @@ void saveWeightsToFile(string filename)
    outputFile.open(filename);
 
    // outputs the network configuration data to the file for verification purposes
-   outputFile << numLayers << " " << A << " " << B << " " << F << "\n\n";
+   outputFile << numLayers << " " << A << " " << B << " " << C << " " << F << "\n\n";
 
-   for (int k = 0; k < A; k++) // outputs the first connectivity layer of the weights array
+   for (int m = 0; m < A; m++) // outputs the first connectivity layer of the weights array
    {
-      for (int j = 0; j < B; j++)
-         outputFile << weights[0][k][j] << " ";
+      for (int k = 0; k < B; k++)
+         outputFile << weights[0][m][k] << " ";
 
       outputFile << "\n";
-   } // for (int k = 0; k < A; k++)
+   } // for (int m = 0; m < A; m++)
 
    outputFile << "\n";
 
-   for (int i = 0; i < F; i++) // outputs the second connectivity layer of the weights array
+   for (int j = 0; j < C; j++) // outputs the second connectivity layer of the weights array
    {
-      for (int j = 0; j < B; j++)
-         outputFile << weights[1][j][i] << " ";
+      for (int k = 0; k < B; k++)
+         outputFile << weights[1][k][j] << " ";
+
+      outputFile << "\n";
+   } // for (int j = 0; j < C; j++)
+
+   outputFile << "\n";
+
+   for (int i = 0; i < F; i++) // outputs the third connectivity layer of the weights array
+   {
+      for (int j = 0; j < C; j++)
+         outputFile << weights[2][j][i] << " ";
 
       outputFile << "\n";
    } // for (int i = 0; i < F; i++)
@@ -484,7 +533,7 @@ void train()
 
       for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
       {
-         for (int k = 0; k < A; k++) nodes[0][k] = truth[testCaseNum].f[k];
+         for (int m = 0; m < A; m++) nodes[0][m] = truth[testCaseNum].f[m];
 
          double totalError = runTraining(testCaseNum);
 
@@ -492,24 +541,40 @@ void train()
          if (totalError > errorReached) errorReached = totalError;
 
          double capitalOmega_j;
-         double capitalPsi_j;
 
-         // calculates by how much we must change all weights and updates all weights accordingly
-         for (int j = 0; j < B; j++)
+         for (int j = 0; j < C; j++) // iterate over the ji layer
          {
             capitalOmega_j = 0.0;
             for (int i = 0; i < F; i++)
             {
-               capitalOmega_j += psi[i] * weights[1][j][i];
+               capitalOmega_j += psi_i[i] * weights[2][j][i];
 
                // updates the ji weight because we're done with it
-               weights[1][j][i] += lambda * nodes[1][j] * psi[i];
+               weights[2][j][i] += lambda * nodes[2][j] * psi_i[i];
             } // for (int i = 0; i < F; i++)
 
-            // updates the kj weights
-            capitalPsi_j = capitalOmega_j * activationFunctionDerivative(sums[1][j]);
-            for (int k = 0; k < A; k++) weights[0][k][j] += lambda * nodes[0][k] * capitalPsi_j;
-         } // for (int j = 0; j < B; j++)
+            // stores capitalPsi_j
+            capitalPsi_j[j] = capitalOmega_j * activationFunctionDerivative(sums[2][j]);
+         } // for (int j = 0; j < C; j++)
+
+         double capitalOmega_k;
+         double capitalPsi_k;
+
+         for (int k = 0; k < B; k++) // update the remaining weights
+         {
+            capitalOmega_k = 0.0;
+            for (int j = 0; j < C; j++)
+            {
+               capitalOmega_k += capitalPsi_j[j] * weights[1][k][j];
+
+               // updates the kj weight because we're done with it
+               weights[1][k][j] += lambda * nodes[1][k] * capitalPsi_j[j];
+            } // for (int j = 0; j < C; j++)
+
+            // updates the mk weights
+            capitalPsi_k = capitalOmega_k * activationFunctionDerivative(sums[1][k]);
+            for (int m = 0; m < A; m++) weights[0][m][k] += lambda * nodes[0][m] * capitalPsi_k;
+         } // for (int k = 0; k < B; k++)
       } // for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
 
       numIterations++;
@@ -552,7 +617,7 @@ void report(bool doInitialReport, int testCaseNum)
       cout << "Test Case " << testCaseNum + 1 << ":\n";
 
       cout << "\tInput activation value(s):";
-      for (int k = 0; k < A; k++) cout << " " << truth[testCaseNum].f[k];
+      for (int m = 0; m < A; m++) cout << " " << truth[testCaseNum].f[m];
 
       cout << "\n\tExpected output value(s):";
       for (int i = 0; i < F; i++) cout << " " << truth[testCaseNum].s[i];
@@ -595,7 +660,7 @@ int main(int argc, char* argv[])
    report(true, 0);
    for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
    {
-      for (int k = 0; k < A; k++) nodes[0][k] = truth[testCaseNum].f[k];
+      for (int m = 0; m < A; m++) nodes[0][m] = truth[testCaseNum].f[m];
 
       runRunning();
 
