@@ -497,23 +497,23 @@ void saveWeightsToFile(string filename)
 
    outputFile << "\n";
 
-   for (int j = 0; j < C; j++) // outputs the second connectivity layer of the weights array
+   for (int k = 0; k < B; k++) // outputs the second connectivity layer of the weights array
    {
-      for (int k = 0; k < B; k++)
+      for (int j = 0; j < C; j++)
          outputFile << weights[1][k][j] << " ";
 
       outputFile << "\n";
-   } // for (int j = 0; j < C; j++)
+   } // for (int k = 0; k < B; k++)
 
    outputFile << "\n";
 
-   for (int i = 0; i < F; i++) // outputs the third connectivity layer of the weights array
+   for (int j = 0; j < C; j++) // outputs the third connectivity layer of the weights array
    {
-      for (int j = 0; j < C; j++)
+      for (int i = 0; i < F; i++)
          outputFile << weights[2][j][i] << " ";
 
       outputFile << "\n";
-   } // for (int i = 0; i < F; i++)
+   } // for (int j = 0; j < C; j++)
 
    outputFile.close();
 } // void saveWeightsToFile(string filename)
@@ -596,22 +596,37 @@ void train()
  */
 void report(bool doInitialReport, int testCaseNum)
 {
-   if (doInitialReport && training)
+   if (doInitialReport)
    {
-      cout << "Training was terminated because of the following reason(s):\n";
+      if (training)
+      {
+         cout << "Training was terminated because of the following reason(s):\n";
 
-      if (maxIterationsReached) cout << "\tThe maximum number of iterations was reached\n";
+         if (maxIterationsReached) cout << "\tThe maximum number of iterations was reached\n";
 
-      if (errorThresholdReached) cout << "\tThe error threshold was reached\n";
+         if (errorThresholdReached) cout << "\tThe error threshold was reached\n";
 
-      cout << "\n";
+         cout << "\n";
 
-      cout << "Relevant values at the end of training:\n";
-      cout << "\tThe number of iterations reached was " << numIterations << "\n";
-      cout << "\tThe error reached was " << errorReached << "\n";
-      cout << "\tThe amount of time training took was " << trainingTime.count() << " seconds\n";
-      cout << "\n";
-   } // if (doInitialReport && training)
+         cout << "Relevant values at the end of training:\n";
+         cout << "\tThe number of iterations reached was " << numIterations << "\n";
+         cout << "\tThe error reached was " << errorReached << "\n";
+         cout << "\tThe amount of time training took was " << trainingTime.count() << " seconds\n";
+         cout << "\n";
+      } // if (training)
+      else
+      {
+         cout << "Running Test Case:\n";
+
+         cout << "\tInput activation value(s):";
+         for (int m = 0; m < A; m++) cout << " " << nodes[0][m];
+
+         cout << "\n\tNetwork generated output value(s):";
+         for (int i = 0; i < F; i++) cout << " " << nodes[numLayers][i];
+
+         cout << "\n";
+      } // else
+   } // if (doInitialReport)
    else
    {
       cout << "Test Case " << testCaseNum + 1 << ":\n";
