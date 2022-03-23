@@ -420,7 +420,7 @@ void runRunning()
    for (int i = 0; i < F; i++) // calculates and populates the output layer
    {
       nodeVal = 0.0;
-      for (int j = 0; j < B; j++) nodeVal += nodes[2][j] * weights[2][j][i];
+      for (int j = 0; j < C; j++) nodeVal += nodes[2][j] * weights[2][j][i];
 
       nodes[numLayers][i] = activationFunction(nodeVal);
    } // for (int i = 0; i < F; i++)
@@ -461,7 +461,7 @@ double runTraining(int testCaseNum)
    for (int i = 0; i < F; i++) // calculates and populates the output layer
    {
       nodeVal = 0.0;
-      for (int j = 0; j < B; j++) nodeVal += nodes[2][j] * weights[2][j][i];
+      for (int j = 0; j < C; j++) nodeVal += nodes[2][j] * weights[2][j][i];
 
       sums[numLayers][i] = nodeVal;
       nodes[numLayers][i] = activationFunction(nodeVal);
