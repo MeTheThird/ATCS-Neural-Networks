@@ -487,6 +487,9 @@ void saveWeightsToFile(string filename)
    // outputs the network configuration data to the file for verification purposes
    outputFile << numLayers << " " << A << " " << B << " " << C << " " << F << "\n\n";
 
+   // sets the precision of the output stream to save the weight values with full double precision
+   outputFile << setprecision(numeric_limits<double>::digits10 + 2);
+
    for (int m = 0; m < A; m++) // outputs the first connectivity layer of the weights array
    {
       for (int k = 0; k < B; k++)
