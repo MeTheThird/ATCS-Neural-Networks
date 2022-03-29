@@ -583,6 +583,9 @@ void train()
       if (errorReached < errorThreshold) errorThresholdReached = true;
    } // while (!maxIterationsReached && !errorThresholdReached)
 
+   // run the network one final time to update everything based on the final weight values
+   runTraining(0);
+
    saveWeightsToFile(outputWeightsFilename);
 } // void train()
 
