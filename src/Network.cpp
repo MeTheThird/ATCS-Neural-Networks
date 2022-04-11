@@ -532,7 +532,7 @@ void train()
 {
    while (!maxIterationsReached && !errorThresholdReached)
    {
-      errorReached = -DBL_MAX; // initialized to the lowest possible double value
+      errorReached = 0; // initialized to the lowest possible error value
 
       for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
       {
