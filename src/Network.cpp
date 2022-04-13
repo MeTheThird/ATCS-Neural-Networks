@@ -574,8 +574,10 @@ void train()
                weights[1][k][j] += lambda * nodes[1][k] * capitalPsi_j[j];
             } // for (int j = 0; j < C; j++)
 
-            // updates the mk weights
+            // calculate capitalPsi_k
             capitalPsi_k = capitalOmega_k * activationFunctionDerivative(sums[1][k]);
+
+            // update the mk weights
             for (int m = 0; m < A; m++) weights[0][m][k] += lambda * nodes[0][m] * capitalPsi_k;
          } // for (int k = 0; k < B; k++)
       } // for (int testCaseNum = 0; testCaseNum < numTruthTableCases; testCaseNum++)
