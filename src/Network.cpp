@@ -13,6 +13,48 @@
  * hidden layer, and the index 2 refers to the weights between the second hidden layer and the
  * output layer. In short, the 0s, 1s, 2s, and 3s present throughout this code are used because of
  * the design doc and are not magic numbers.
+ *
+ * Table of contents of methods in this file:
+ *
+ * void setupFileInput(string defaultFilename)
+ *
+ * void config(int argc, char* argv[])
+ *
+ * void printOutConfigVals()
+ *
+ * void allocateWeightsArrays()
+ *
+ * void allocateTruthTableArray()
+ *
+ * void allocateMemory()
+ *
+ * void loadTruthTableValues()
+ *
+ * void loadWeightValues()
+ *
+ * double getRandomNumberBetween(double minValue, double maxValue)
+ *
+ * void generateRandomWeightValues()
+ *
+ * void loadActivationValues()
+ *
+ * void loadValues()
+ *
+ * double activationFunction(double value)
+ *
+ * double activationFunctionDerivative(double value)
+ *
+ * void runRunning()
+ *
+ * double runTraining(int testCaseNum)
+ *
+ * void saveWeightsToFile(string filename)
+ *
+ * void train()
+ *
+ * void report(bool doInitialReport, int testCaseNum)
+ *
+ * int main(int argc, char* argv[])
  */
 
 #include <bits/stdc++.h>
@@ -164,7 +206,7 @@ void printOutConfigVals()
       cout << "\tOutput weights filename: " << outputWeightsFilename << "\n";
    else
       cout << "\tActivation values filename: " << defaultInputActivationsFilename << "\n";
-   
+
    if (!training || !useRandWeights)
       cout << "\tWeight values filename: " << defaultWeightsFilename << "\n";
 
@@ -301,7 +343,7 @@ void loadWeightValues()
    for (int k = 0; k < B; k++) // load the second connectivity layer of the weights array
       for (int j = 0; j < C; j++)
          inputFile >> weights[1][k][j];
-   
+
    for (int j = 0; j < C; j++) // load the third connectivity layer of the weights array
       for (int i = 0; i < F; i++)
          inputFile >> weights[2][j][i];
