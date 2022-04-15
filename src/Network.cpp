@@ -17,43 +17,24 @@
  * Table of contents of methods in this file:
  *
  * void setupFileInput(string defaultFilename)
- *
  * void config(int argc, char* argv[])
- *
  * void printOutConfigVals()
- *
  * void allocateWeightsArrays()
- *
  * void allocateTruthTableArray()
- *
  * void allocateMemory()
- *
  * void loadTruthTableValues()
- *
  * void loadWeightValues()
- *
  * double getRandomNumberBetween(double minValue, double maxValue)
- *
  * void generateRandomWeightValues()
- *
  * void loadActivationValues()
- *
  * void loadValues()
- *
  * double activationFunction(double value)
- *
  * double activationFunctionDerivative(double value)
- *
  * void runRunning()
- *
  * double runTraining(int testCaseNum)
- *
  * void saveWeightsToFile(string filename)
- *
  * void train()
- *
  * void report(bool doInitialReport, int testCaseNum)
- *
  * int main(int argc, char* argv[])
  */
 
